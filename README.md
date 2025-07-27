@@ -70,6 +70,10 @@ The containerized application can be deployed to various platforms:
 
 ## 📖 API Usage
 
+For comprehensive API documentation, see [API.md](API.md).
+
+### Quick Start
+
 ### Execute Code
 
 **Endpoint**: `POST /execute`
@@ -117,6 +121,17 @@ curl -X POST http://localhost:8000/execute \
   -d '{
     "language": "python",
     "code": "import math\nprint(f\"π = {math.pi}\")\nprint(f\"e = {math.e}\")"
+  }'
+```
+
+### Go Example
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"fmt\"\n    \"time\"\n)\n\nfunc main() {\n    fmt.Println(\"Hello from Go!\")\n    fmt.Printf(\"Current time: %s\\n\", time.Now().Format(time.RFC3339))\n}"
   }'
 ```
 
@@ -173,6 +188,7 @@ curl -X POST http://localhost:8000/execute \
 | -------- | ------------- | -------------- |
 | Python   | `python:3.11` | `.py`          |
 | Node.js  | `node:20`     | `.js`          |
+| Go       | `golang:1.21` | `.go`          |
 
 ### Environment Variables
 
