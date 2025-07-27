@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.70-slim AS builder
+FROM rust:latest AS builder
 
 # Install dependencies for building
 RUN apt-get update && apt-get install -y \
@@ -23,6 +23,7 @@ FROM debian:bookworm-slim
 
 # Install Docker CLI and runtime dependencies
 RUN apt-get update && apt-get install -y \
+    gnupg \
     docker.io \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
