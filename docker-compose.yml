@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  isobox:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount Docker socket to allow container to run Docker commands
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount temp directory for code execution
+      - /tmp:/tmp
+    environment:
+      - RUST_LOG=info
+      - PORT=8000
+    restart: unless-stopped
+
+  # Optional: Pull required language images
+  python-image:
+    image: python:3.11
+    command: "true"
+
+  node-image:
+    image: node:20
+    command: "true"

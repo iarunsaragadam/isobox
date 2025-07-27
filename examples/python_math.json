@@ -1,0 +1,4 @@
+{
+  "language": "python",
+  "code": "import math\n\n# Calculate some mathematical constants\nprint(f\"π = {math.pi}\")\nprint(f\"e = {math.e}\")\nprint(f\"Golden ratio φ = {(1 + math.sqrt(5)) / 2}\")\n\n# List comprehension example\nsquares = [x**2 for x in range(1, 6)]\nprint(f\"Squares 1-5: {squares}\")\n\n# Simple algorithm\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\nprint(f\"Fibonacci sequence (first 10): {[fibonacci(i) for i in range(10)]}\")"
+}

@@ -1,0 +1,35 @@
+# Git and version control
+.git/
+.gitignore
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Documentation and examples
+README.md
+examples/
+test.sh
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs and temporary files
+*.log
+/tmp/
+*.tmp
+
+# Development tools
+Makefile

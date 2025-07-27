@@ -1,0 +1,4 @@
+{
+  "language": "node",
+  "code": "// Modern JavaScript features\nconst users = [\n  { name: 'Alice', age: 30, city: 'NYC' },\n  { name: 'Bob', age: 25, city: 'SF' },\n  { name: 'Charlie', age: 35, city: 'LA' }\n];\n\nconsole.log('Original users:', users);\n\n// Array methods\nconst adults = users.filter(user => user.age >= 30);\nconsole.log('Adults (30+):', adults);\n\nconst names = users.map(user => user.name);\nconsole.log('Names:', names);\n\n// Template literals and destructuring\nusers.forEach(({ name, age, city }) => {\n  console.log(`${name} is ${age} years old and lives in ${city}`);\n});\n\n// Modern async/await pattern (sync version)\nconst processData = () => {\n  const result = users.reduce((acc, user) => {\n    acc[user.city] = (acc[user.city] || 0) + 1;\n    return acc;\n  }, {});\n  return result;\n};\n\nconsole.log('Users by city:', processData());"
+}
