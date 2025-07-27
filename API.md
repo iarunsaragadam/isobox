@@ -53,7 +53,7 @@ curl http://localhost:8000/health
 
 **Parameters:**
 
-- `language` (required): The programming language to use. Supported values: `python`, `node`, `go`
+- `language` (required): The programming language to use. See supported languages below.
 - `code` (required): The source code to execute
 
 **Response:**
@@ -85,11 +85,66 @@ curl -X POST http://localhost:8000/execute \
 
 ## Supported Languages
 
-| Language | Docker Image  | File Extension | Example Command  |
-| -------- | ------------- | -------------- | ---------------- |
-| Python   | `python:3.11` | `.py`          | `python main.py` |
-| Node.js  | `node:20`     | `.js`          | `node main.js`   |
-| Go       | `golang:1.21` | `.go`          | `go run main.go` |
+Isobox supports **50+ programming languages** including all major languages supported by Judge0:
+
+### Scripting Languages
+
+| Language   | Docker Image           | File Extension | Compilation Required |
+| ---------- | ---------------------- | -------------- | -------------------- |
+| Python     | `python:3.11`          | `.py`          | No                   |
+| Python 2   | `python:2.7`           | `.py`          | No                   |
+| Node.js    | `node:20`              | `.js`          | No                   |
+| TypeScript | `node:20`              | `.ts`          | Yes                  |
+| PHP        | `php:8.2`              | `.php`         | No                   |
+| Ruby       | `ruby:3.2`             | `.rb`          | No                   |
+| Perl       | `perl:5.38`            | `.pl`          | No                   |
+| Bash       | `bash:latest`          | `.sh`          | No                   |
+| Lua        | `lua:5.4`              | `.lua`         | No                   |
+| R          | `r-base:latest`        | `.r`           | No                   |
+| Octave     | `octave/octave:latest` | `.m`           | No                   |
+
+### Compiled Languages
+
+| Language | Docker Image                        | File Extension | Compilation Required |
+| -------- | ----------------------------------- | -------------- | -------------------- |
+| C        | `gcc:latest`                        | `.c`           | Yes                  |
+| C++      | `gcc:latest`                        | `.cpp`         | Yes                  |
+| Rust     | `rust:latest`                       | `.rs`          | Yes                  |
+| Go       | `golang:1.21`                       | `.go`          | No                   |
+| Java     | `openjdk:17`                        | `.java`        | Yes                  |
+| C#       | `mcr.microsoft.com/dotnet/sdk:7.0`  | `.cs`          | No                   |
+| Kotlin   | `openjdk:17`                        | `.kt`          | Yes                  |
+| Swift    | `swift:5.9`                         | `.swift`       | Yes                  |
+| Scala    | `openjdk:17`                        | `.scala`       | Yes                  |
+| Haskell  | `haskell:9.4`                       | `.hs`          | Yes                  |
+| OCaml    | `ocaml/opam:ubuntu-22.04-ocaml-5.0` | `.ml`          | Yes                  |
+| D        | `dlang2/dmd-ubuntu:latest`          | `.d`           | Yes                  |
+| Fortran  | `gcc:latest`                        | `.f90`         | Yes                  |
+| Pascal   | `fpc:latest`                        | `.pas`         | Yes                  |
+| Assembly | `nasm:latest`                       | `.asm`         | Yes                  |
+| COBOL    | `gnucobol:latest`                   | `.cob`         | Yes                  |
+| Basic    | `freebasic/fbc:latest`              | `.bas`         | Yes                  |
+
+### Functional Languages
+
+| Language    | Docker Image                       | File Extension | Compilation Required |
+| ----------- | ---------------------------------- | -------------- | -------------------- |
+| Clojure     | `clojure:openjdk-17`               | `.clj`         | No                   |
+| F#          | `mcr.microsoft.com/dotnet/sdk:7.0` | `.fsx`         | No                   |
+| Elixir      | `elixir:1.15`                      | `.exs`         | No                   |
+| Common Lisp | `daewok/lisp-devel:latest`         | `.lisp`        | No                   |
+| Erlang      | `erlang:latest`                    | `.erl`         | No                   |
+
+### Other Languages
+
+| Language          | Docker Image                       | File Extension | Compilation Required |
+| ----------------- | ---------------------------------- | -------------- | -------------------- |
+| Dart              | `dart:stable`                      | `.dart`        | No                   |
+| Groovy            | `openjdk:17`                       | `.groovy`      | No                   |
+| Prolog            | `swipl:latest`                     | `.pl`          | No                   |
+| Visual Basic .NET | `mcr.microsoft.com/dotnet/sdk:7.0` | `.vb`          | No                   |
+| SQL               | `sqlite:latest`                    | `.sql`         | No                   |
+| Objective-C       | `gcc:latest`                       | `.m`           | Yes                  |
 
 ## Examples
 
@@ -176,14 +231,306 @@ curl -X POST http://localhost:8000/execute \
   }'
 ```
 
-#### Go with Error
+### Rust Examples
+
+#### Basic Rust
 
 ```bash
 curl -X POST http://localhost:8000/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "language": "go",
-    "code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"This will fail - missing import\")\n}"
+    "language": "rust",
+    "code": "fn main() {\n    println!(\"Hello from Rust!\");\n}"
+  }'
+```
+
+#### Rust with Vector Operations
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "rust",
+    "code": "fn main() {\n    let numbers: Vec<i32> = (1..=10).collect();\n    let sum: i32 = numbers.iter().sum();\n    println!(\"Sum of 1 to 10: {}\", sum);\n}"
+  }'
+```
+
+### C Examples
+
+#### Basic C
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "c",
+    "code": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello from C!\\n\");\n    return 0;\n}"
+  }'
+```
+
+#### C with Math
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "c",
+    "code": "#include <stdio.h>\n#include <math.h>\n\nint main() {\n    printf(\"π ≈ %.6f\\n\", M_PI);\n    printf(\"e ≈ %.6f\\n\", M_E);\n    return 0;\n}"
+  }'
+```
+
+### C++ Examples
+
+#### Basic C++
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "cpp",
+    "code": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::cout << \"Hello from C++!\" << std::endl;\n    return 0;\n}"
+  }'
+```
+
+#### C++ with STL
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "cpp",
+    "code": "#include <iostream>\n#include <vector>\n#include <algorithm>\n\nint main() {\n    std::vector<int> numbers = {3, 1, 4, 1, 5, 9, 2, 6};\n    std::sort(numbers.begin(), numbers.end());\n    for (int n : numbers) {\n        std::cout << n << \" \";\n    }\n    std::cout << std::endl;\n    return 0;\n}"
+  }'
+```
+
+### Java Examples
+
+#### Basic Java
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "java",
+    "code": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from Java!\");\n    }\n}"
+  }'
+```
+
+#### Java with Collections
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "java",
+    "code": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<String> fruits = Arrays.asList(\"apple\", \"banana\", \"cherry\");\n        fruits.forEach(System.out::println);\n    }\n}"
+  }'
+```
+
+### C# Examples
+
+#### Basic C#
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "csharp",
+    "code": "using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine(\"Hello from C#!\");\n    }\n}"
+  }'
+```
+
+#### C# with LINQ
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "csharp",
+    "code": "using System;\nusing System.Linq;\n\nclass Program {\n    static void Main() {\n        var numbers = Enumerable.Range(1, 10);\n        var sum = numbers.Sum();\n        Console.WriteLine($\"Sum: {sum}\");\n    }\n}"
+  }'
+```
+
+### PHP Examples
+
+#### Basic PHP
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "php",
+    "code": "<?php\necho \"Hello from PHP!\\n\";\n?>"
+  }'
+```
+
+#### PHP with Arrays
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "php",
+    "code": "<?php\n$fruits = [\"apple\", \"banana\", \"cherry\"];\nforeach ($fruits as $fruit) {\n    echo $fruit . \"\\n\";\n}\n?>"
+  }'
+```
+
+### Ruby Examples
+
+#### Basic Ruby
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "ruby",
+    "code": "puts \"Hello from Ruby!\""
+  }'
+```
+
+#### Ruby with Blocks
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "ruby",
+    "code": "[1, 2, 3, 4, 5].each { |n| puts n * 2 }"
+  }'
+```
+
+### Kotlin Examples
+
+#### Basic Kotlin
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "kotlin",
+    "code": "fun main() {\n    println(\"Hello from Kotlin!\")\n}"
+  }'
+```
+
+#### Kotlin with Collections
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "kotlin",
+    "code": "fun main() {\n    val numbers = listOf(1, 2, 3, 4, 5)\n    val doubled = numbers.map { it * 2 }\n    println(doubled)\n}"
+  }'
+```
+
+### Swift Examples
+
+#### Basic Swift
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "swift",
+    "code": "print(\"Hello from Swift!\")"
+  }'
+```
+
+#### Swift with Arrays
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "swift",
+    "code": "let numbers = [1, 2, 3, 4, 5]\nlet doubled = numbers.map { $0 * 2 }\nprint(doubled)"
+  }'
+```
+
+### Haskell Examples
+
+#### Basic Haskell
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "haskell",
+    "code": "main = putStrLn \"Hello from Haskell!\""
+  }'
+```
+
+#### Haskell with Lists
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "haskell",
+    "code": "main = do\n    let numbers = [1..10]\n    let doubled = map (*2) numbers\n    print doubled"
+  }'
+```
+
+### TypeScript Examples
+
+#### Basic TypeScript
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "typescript",
+    "code": "interface Person {\n    name: string;\n    age: number;\n}\n\nconst person: Person = { name: \"Alice\", age: 30 };\nconsole.log(person);"
+  }'
+```
+
+### R Examples
+
+#### Basic R
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "r",
+    "code": "cat(\"Hello from R!\\n\")"
+  }'
+```
+
+#### R with Data Analysis
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "r",
+    "code": "numbers <- 1:10\nmean_val <- mean(numbers)\ncat(\"Mean:\", mean_val, \"\\n\")"
+  }'
+```
+
+### Bash Examples
+
+#### Basic Bash
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "bash",
+    "code": "echo \"Hello from Bash!\"\ndate"
+  }'
+```
+
+### SQL Examples
+
+#### Basic SQL
+
+```bash
+curl -X POST http://localhost:8000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "sql",
+    "code": "CREATE TABLE users (id INTEGER, name TEXT);\nINSERT INTO users VALUES (1, \"Alice\");\nSELECT * FROM users;"
   }'
 ```
 
@@ -193,7 +540,7 @@ curl -X POST http://localhost:8000/execute \
 
 ```json
 {
-  "error": "Unsupported language: rust"
+  "error": "Unsupported language: unsupported_lang"
 }
 ```
 
@@ -213,6 +560,16 @@ curl -X POST http://localhost:8000/execute \
 }
 ```
 
+### Compilation Error
+
+```json
+{
+  "stdout": "",
+  "stderr": "error: expected `;`, found `}`\n  --> main.rs:3:5\n   |\n3 | }\n   |     ^\n",
+  "exit_code": 1
+}
+```
+
 ## Security Features
 
 - **Network Isolation**: Containers run with `--network none`
@@ -220,6 +577,7 @@ curl -X POST http://localhost:8000/execute \
 - **Temporary Files**: Code files are written to unique temp directories and cleaned up
 - **No Persistence**: No data persists between executions
 - **Resource Limits**: Containers have limited access to system resources
+- **Language-Specific Isolation**: Each language runs in its own optimized container
 
 ## Rate Limiting
 
@@ -244,6 +602,58 @@ docker run -p 8000:8000 \
   ghcr.io/yourusername/isobox:latest
 ```
 
+## Performance Considerations
+
+- **First Run**: The first execution of each language may take longer as Docker images are pulled
+- **Compilation**: Compiled languages (C, C++, Rust, Java, etc.) have an additional compilation step
+- **Memory Usage**: Different languages have varying memory requirements
+- **Execution Time**: Scripting languages typically start faster than compiled languages
+
 ## Development
 
 For development setup and contributing guidelines, see the main [README.md](README.md) file.
+
+## Language-Specific Notes
+
+### Compiled Languages
+
+- C, C++, Rust, Java, Kotlin, Swift, Scala, Haskell, OCaml, D, Fortran, Pascal, Assembly, COBOL, Basic, Objective-C require compilation
+- Compilation errors are returned in the `stderr` field
+- Successful compilation produces an executable that is then run
+
+### Scripting Languages
+
+- Python, Node.js, PHP, Ruby, Perl, Bash, Lua, R, Octave, TypeScript, Dart, Elixir, Clojure, F#, Groovy, Prolog, Visual Basic .NET, SQL run directly
+- No compilation step required
+
+### Special Cases
+
+- **TypeScript**: Requires compilation to JavaScript before execution
+- **C#**: Uses .NET runtime, no explicit compilation step
+- **SQL**: Executes against SQLite database
+- **Assembly**: Uses NASM assembler and GNU linker
+- **Objective-C**: Requires Foundation framework
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Language Not Supported**: Check the supported languages list above
+2. **Compilation Errors**: Review the `stderr` output for specific error messages
+3. **Timeout Issues**: Some languages may take longer to start up
+4. **Memory Issues**: Large programs may exceed container memory limits
+
+### Debugging
+
+Enable debug logging by setting `RUST_LOG=debug`:
+
+```bash
+RUST_LOG=debug cargo run
+```
+
+This will provide detailed information about:
+
+- Container creation and execution
+- File operations
+- Compilation steps
+- Cleanup processes

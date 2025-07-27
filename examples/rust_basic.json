@@ -1,0 +1,4 @@
+{
+  "language": "rust",
+  "code": "fn main() {\n    println!(\"=== Rust Program Test ===\");\n    \n    // Basic operations\n    let numbers: Vec<i32> = (1..=10).collect();\n    let sum: i32 = numbers.iter().sum();\n    let product: i32 = numbers.iter().product();\n    \n    println!(\"Numbers: {:?}\", numbers);\n    println!(\"Sum: {}\", sum);\n    println!(\"Product: {}\", product);\n    \n    // String operations\n    let message = \"Hello from Rust!\";\n    println!(\"Message: {}\", message);\n    println!(\"Length: {}\", message.len());\n    \n    // Vector operations\n    let mut sorted_numbers = numbers.clone();\n    sorted_numbers.sort();\n    println!(\"Sorted: {:?}\", sorted_numbers);\n    \n    println!(\"=== Test completed successfully! ===\");\n}"
+} 
