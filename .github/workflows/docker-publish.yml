@@ -84,12 +84,15 @@ jobs:
 
       - name: Run end-to-end tests
         run: |
+          # Use a simple local tag for testing
+          docker tag ${{ steps.meta.outputs.tags }} isobox:test
+
           # Start the container for testing
           docker run -d --name isobox-test \
             -p 8000:8000 \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v /tmp:/tmp \
-            ${{ steps.meta.outputs.tags }}
+            isobox:test
 
           # Wait for container to start
           sleep 10
