@@ -196,6 +196,10 @@ curl -X POST http://localhost:8000/execute \
 
 - **Network Isolation**: Containers run with `--network none`
 - **Ephemeral Containers**: All containers are removed after execution (`--rm`)
+- **Resource Limits**: Memory (128MB), CPU time (5s), wall time (10s), process limits (50)
+- **Privilege Dropping**: Containers run with `--security-opt no-new-privileges`
+- **Capability Restrictions**: All capabilities dropped with `--cap-drop ALL`
+- **Timeout Protection**: Automatic termination of infinite loops and long-running code
 - **Temporary Files**: Code files are written to unique temp directories and cleaned up
 - **No Persistence**: No data persists between executions
 - **Language-Specific Isolation**: Each language runs in its own optimized container
@@ -333,8 +337,8 @@ RUST_LOG=info cargo run
 
 ## 🚧 Future Enhancements
 
-- [ ] **Resource Limits**: Memory and CPU constraints for containers
-- [ ] **Timeout Configuration**: Configurable execution timeouts
+- [x] **Resource Limits**: Memory and CPU constraints for containers ✅
+- [x] **Timeout Configuration**: Configurable execution timeouts ✅
 - [ ] **Input Support**: Support for stdin and command-line arguments
 - [ ] **More Languages**: Additional esoteric and domain-specific languages
 - [ ] **Metrics**: Prometheus metrics for monitoring
@@ -342,6 +346,8 @@ RUST_LOG=info cargo run
 - [ ] **Authentication**: API key or token-based authentication
 - [ ] **Multi-file Support**: Support for projects with multiple files
 - [ ] **Package Management**: Support for language-specific package managers
+- [ ] **Memory Tracking**: Real-time memory usage monitoring
+- [ ] **Custom Resource Limits**: Per-request resource limit configuration
 
 ## 📄 License
 

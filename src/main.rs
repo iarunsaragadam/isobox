@@ -18,7 +18,7 @@ async fn execute_code(
         Err(error) => {
             log::error!("Execution failed: {}", error);
             Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                "error": error
+                "error": error.to_string()
             })))
         }
     }

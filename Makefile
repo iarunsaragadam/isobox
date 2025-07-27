@@ -185,6 +185,18 @@ test-languages:
 		-d '{"language": "unsupported", "code": "test"}' | grep -q "Unsupported language" || (echo "❌ Unsupported language test failed"; exit 1)
 	@echo "✅ Unsupported language test passed"
 	
+	@echo "Testing timeout functionality..."
+	@curl -s -X POST $(API_BASE_URL)/execute \
+		-H "Content-Type: application/json" \
+		-d @examples/timeout_test.json | grep -q "Execution timed out" || (echo "❌ Timeout test failed"; exit 1)
+	@echo "✅ Timeout test passed"
+	
+	@echo "Testing memory limits..."
+	@curl -s -X POST $(API_BASE_URL)/execute \
+		-H "Content-Type: application/json" \
+		-d @examples/memory_test.json | grep -q "MemoryError\|Killed" || (echo "❌ Memory limit test failed"; exit 1)
+	@echo "✅ Memory limit test passed"
+	
 	@echo "🎉 All language tests passed!"
 
 # Push Docker image (for CI/CD)
