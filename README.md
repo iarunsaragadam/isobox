@@ -50,10 +50,10 @@ The application is containerized and can be deployed to any container platform:
 docker build -t isobox .
 
 # Run locally
-docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock isobox
+docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp isobox
 
 # Or use the published image from GitHub Container Registry
-docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/yourusername/isobox:latest
+docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp ghcr.io/yourusername/isobox:latest
 ```
 
 ### Deployment Options
