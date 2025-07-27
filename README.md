@@ -41,6 +41,33 @@ cargo build --release
 ./target/release/isobox
 ```
 
+### Deploy with Docker
+
+The application is containerized and can be deployed to any container platform:
+
+```bash
+# Build the image
+docker build -t isobox .
+
+# Run locally
+docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock isobox
+
+# Or use the published image from GitHub Container Registry
+docker run -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/yourusername/isobox:latest
+```
+
+### Deployment Options
+
+The containerized application can be deployed to various platforms:
+
+- **Kubernetes**: Use the Docker image in your Kubernetes manifests
+- **Docker Swarm**: Deploy as a service in Docker Swarm
+- **AWS ECS/Fargate**: Use the image in ECS task definitions
+- **Azure Container Instances**: Deploy directly to ACI
+- **Any container platform**: The image is platform-agnostic
+
+**Note**: The application requires access to the Docker daemon socket (`/var/run/docker.sock`) for code execution isolation. Ensure your deployment environment provides this access.
+
 ## 📖 API Usage
 
 ### Execute Code
@@ -151,6 +178,32 @@ curl -X POST http://localhost:8000/execute \
 
 - `PORT`: Server port (default: 8000)
 - `RUST_LOG`: Log level (default: info)
+
+## 🔄 CI/CD Pipeline
+
+This repository includes GitHub Actions workflows for automated testing and deployment:
+
+### Workflows
+
+- **Test and Build** (`.github/workflows/test.yml`): Runs on pull requests
+
+  - Rust compilation and testing
+  - Code formatting and linting checks
+  - Docker image building and testing
+
+- **Build and Publish** (`.github/workflows/docker-publish.yml`): Runs on main branch
+  - Multi-platform Docker builds (linux/amd64, linux/arm64)
+  - Publishes to GitHub Container Registry (GHCR)
+  - Vulnerability scanning with Trivy
+  - Comprehensive functionality testing
+
+### Container Registry
+
+Images are automatically published to GitHub Container Registry:
+
+- **Latest**: `ghcr.io/yourusername/isobox:latest`
+- **Branch**: `ghcr.io/yourusername/isobox:main`
+- **Commit**: `ghcr.io/yourusername/isobox:sha-<commit-hash>`
 
 ## 🛠️ Development
 
