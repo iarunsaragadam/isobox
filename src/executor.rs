@@ -75,16 +75,28 @@ impl CodeExecutor {
         let job_id = Uuid::new_v4().to_string();
         let temp_dir = format!("/tmp/isobox-{}", job_id);
         
+        log::info!("Creating temp directory: {}", temp_dir);
+        
         // Create temp directory
-        fs::create_dir_all(&temp_dir)
-            .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+        match fs::create_dir_all(&temp_dir) {
+            Ok(_) => {
+                log::info!("Successfully created temp directory: {}", temp_dir);
+            }
+            Err(e) => {
+                log::error!("Failed to create temp directory: {}", e);
+                return Err(format!("Failed to create temp directory: {}", e));
+            }
+        }
         
         // Ensure cleanup happens even if execution fails
         let result = self.execute_in_container(&temp_dir, config, &request.code).await;
         
         // Clean up temp directory
+        log::info!("Cleaning up temp directory: {}", temp_dir);
         if let Err(e) = fs::remove_dir_all(&temp_dir) {
             log::warn!("Failed to clean up temp directory {}: {}", temp_dir, e);
+        } else {
+            log::info!("Successfully cleaned up temp directory: {}", temp_dir);
         }
         
         result
@@ -98,8 +110,36 @@ impl CodeExecutor {
     ) -> Result<ExecuteResponse, String> {
         // Write code to file
         let file_path = format!("{}/{}", temp_dir, config.file_name);
-        fs::write(&file_path, code)
-            .map_err(|e| format!("Failed to write code file: {}", e))?;
+        
+        log::info!("Writing code to file: {}", file_path);
+        log::info!("Code content length: {} bytes", code.len());
+        
+        // Verify temp directory exists and is writable
+        if !std::path::Path::new(temp_dir).exists() {
+            return Err(format!("Temp directory does not exist: {}", temp_dir));
+        }
+        
+        // Write the file with detailed error handling
+        match fs::write(&file_path, code) {
+            Ok(_) => {
+                log::info!("Successfully wrote code to file: {}", file_path);
+                
+                // Verify the file was actually written
+                match fs::metadata(&file_path) {
+                    Ok(metadata) => {
+                        log::info!("File created successfully. Size: {} bytes", metadata.len());
+                    }
+                    Err(e) => {
+                        log::error!("Failed to verify file creation: {}", e);
+                        return Err(format!("File verification failed: {}", e));
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to write code file: {}", e);
+                return Err(format!("Failed to write code file: {}", e));
+            }
+        }
         
         // Build docker command
         let mut docker_args = vec![
