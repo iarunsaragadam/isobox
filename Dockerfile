@@ -28,8 +28,10 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-RUN useradd -r -s /bin/false isobox
+# Create a non-root user and add to docker group
+RUN useradd -r -s /bin/false isobox && \
+    groupadd -g 997 docker || true && \
+    usermod -aG docker isobox
 
 WORKDIR /app
 
@@ -40,7 +42,6 @@ COPY --from=builder /app/target/release/isobox .
 RUN chown isobox:isobox /app/isobox
 
 # Switch to non-root user
-USER isobox
 
 # Expose port
 EXPOSE 8000
