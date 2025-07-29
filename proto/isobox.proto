@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package isobox;
+
+// Code execution service
+service CodeExecutionService {
+  // Execute code in a specified language
+  rpc ExecuteCode(ExecuteCodeRequest) returns (ExecuteCodeResponse);
+  
+  // Health check endpoint
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Get supported languages
+  rpc GetSupportedLanguages(GetSupportedLanguagesRequest) returns (GetSupportedLanguagesResponse);
+}
+
+// Request to execute code
+message ExecuteCodeRequest {
+  string language = 1;  // Programming language (e.g., "python", "node", "rust")
+  string code = 2;      // Source code to execute
+  ResourceLimits resource_limits = 3;  // Optional resource limits
+}
+
+// Response from code execution
+message ExecuteCodeResponse {
+  string stdout = 1;           // Standard output
+  string stderr = 2;           // Standard error
+  int32 exit_code = 3;         // Exit code
+  double time_taken = 4;       // Execution time in seconds
+  uint64 memory_used = 5;      // Memory usage in bytes
+  ExecutionStatus status = 6;  // Execution status
+  string error_message = 7;    // Error message if failed
+}
+
+// Resource limits for code execution
+message ResourceLimits {
+  uint32 cpu_time_limit_seconds = 1;    // CPU time limit in seconds
+  uint32 wall_time_limit_seconds = 2;   // Wall time limit in seconds
+  uint64 memory_limit_bytes = 3;        // Memory limit in bytes
+  uint64 stack_limit_bytes = 4;         // Stack limit in bytes
+  uint32 max_processes = 5;             // Maximum number of processes
+  uint32 max_files = 6;                 // Maximum number of open files
+  bool enable_network = 7;              // Whether to enable network access
+}
+
+// Execution status
+enum ExecutionStatus {
+  SUCCESS = 0;
+  COMPILATION_ERROR = 1;
+  RUNTIME_ERROR = 2;
+  TIMEOUT = 3;
+  MEMORY_LIMIT_EXCEEDED = 4;
+  UNSUPPORTED_LANGUAGE = 5;
+  INTERNAL_ERROR = 6;
+}
+
+// Health check request
+message HealthCheckRequest {}
+
+// Health check response
+message HealthCheckResponse {
+  string status = 1;           // Service status
+  string service = 2;          // Service name
+  string version = 3;          // Service version
+  uint64 uptime_seconds = 4;   // Uptime in seconds
+}
+
+// Request to get supported languages
+message GetSupportedLanguagesRequest {}
+
+// Response with supported languages
+message GetSupportedLanguagesResponse {
+  repeated LanguageInfo languages = 1;
+}
+
+// Information about a supported language
+message LanguageInfo {
+  string name = 1;             // Language name
+  string display_name = 2;     // Human-readable name
+  string docker_image = 3;     // Docker image used
+  bool requires_compilation = 4; // Whether compilation is required
+  repeated string file_extensions = 5; // Supported file extensions
+} 

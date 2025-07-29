@@ -1,31 +1,43 @@
-# Build stage
+# =============================================================================
+# BUILDER STAGE - Build the Rust application
+# =============================================================================
 FROM rust:latest AS builder
 
-# Install dependencies for building
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy manifests
+# Copy dependency files first for better caching
 COPY Cargo.toml Cargo.lock ./
 
-# Copy source code
-COPY src ./src
+# Create a dummy main.rs to build dependencies
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
 
-# Build the application
+# Copy source code and proto files
+COPY src ./src
+COPY proto ./proto
+COPY build.rs .
+
+# Build the application (this will be fast since dependencies are cached)
 RUN cargo build --release
 
-# Runtime stage
-FROM debian:bookworm-slim
+# =============================================================================
+# RUNTIME STAGE - Final lightweight image
+# =============================================================================
+FROM debian:bookworm-slim AS runtime
 
-# Install Docker CLI and runtime dependencies
+# Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
     gnupg \
     docker.io \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and add to docker group
@@ -41,10 +53,8 @@ COPY --from=builder /app/target/release/isobox .
 # Change ownership
 RUN chown isobox:isobox /app/isobox
 
-# Switch to non-root user
-
-# Expose port
-EXPOSE 8000
+# Expose ports
+EXPOSE 8000 9000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

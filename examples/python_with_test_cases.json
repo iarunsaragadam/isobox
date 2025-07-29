@@ -1,0 +1,27 @@
+{
+  "language": "python",
+  "code": "import sys\n\n# Read input from stdin\ndata = sys.stdin.read().strip()\n\n# Simple example: if input is numbers, add them\nif data.replace(' ', '').replace('\\n', '').isdigit():\n    numbers = [int(x) for x in data.split()]\n    result = sum(numbers)\n    print(result)\nelse:\n    # If it's text, reverse it\n    print(data[::-1])",
+  "test_cases": [
+    {
+      "name": "addition_test",
+      "input": "5\n3",
+      "expected_output": "8",
+      "timeout_seconds": 5,
+      "memory_limit_mb": 128
+    },
+    {
+      "name": "string_reverse_test",
+      "input": "Hello World",
+      "expected_output": "dlroW olleH",
+      "timeout_seconds": 5,
+      "memory_limit_mb": 128
+    },
+    {
+      "name": "array_sum_test",
+      "input": "1 2 3 4 5",
+      "expected_output": "15",
+      "timeout_seconds": 5,
+      "memory_limit_mb": 128
+    }
+  ]
+} 

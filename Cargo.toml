@@ -6,6 +6,10 @@ description = "Secure Code Execution API - Execute arbitrary code in isolated Do
 license = "MIT"
 authors = ["Your Name <your.email@example.com>"]
 
+[lib]
+name = "isobox"
+path = "src/lib.rs"
+
 [dependencies]
 actix-web = "4.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -15,6 +19,27 @@ tokio = { version = "1.0", features = ["full"] }
 log = "0.4"
 env_logger = "0.10"
 thiserror = "1.0"
+
+# gRPC dependencies
+tonic = "0.10"
+prost = "0.12"
+futures = "0.3"
+
+# Authentication dependencies
+jsonwebtoken = "9.0"
+reqwest = { version = "0.11", features = ["json"] }
+config = "0.13"
+async-trait = "0.1"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.21"
+rustls = "0.21"
+rustls-pemfile = "1.0"
+webpki-roots = "0.25"
+futures-util = "0.3"
+
+[build-dependencies]
+tonic-build = "0.10"
 
 [[bin]]
 name = "isobox"

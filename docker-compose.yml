@@ -4,7 +4,8 @@ services:
   isobox:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:8000" # REST API
+      - "9000:9000" # gRPC API
     volumes:
       # Mount Docker socket to allow container to run Docker commands
       - /var/run/docker.sock:/var/run/docker.sock
@@ -12,7 +13,8 @@ services:
       - /tmp:/tmp
     environment:
       - RUST_LOG=info
-      - PORT=8000
+      - REST_PORT=8000
+      - GRPC_PORT=9000
     restart: unless-stopped
 
   # Optional: Pull required language images

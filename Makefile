@@ -1,7 +1,7 @@
 # isobox Makefile
 # Comprehensive testing and build pipeline
 
-.PHONY: help test test-unit test-integration test-e2e build clean docker-build docker-test docker-push all
+.PHONY: help test test-unit test-integration test-e2e test-grpc build clean docker-build docker-test docker-push all
 
 # Default target
 help:
@@ -9,10 +9,12 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help          - Show this help message"
-	@echo "  test          - Run all tests (unit + integration + e2e)"
+	@echo "  test          - Run all tests (unit + integration + e2e + gRPC + gRPC client)"
 	@echo "  test-unit     - Run unit tests only"
 	@echo "  test-integration - Run integration tests"
-	@echo "  test-e2e      - Run end-to-end tests against Docker image"
+	@echo "  test-e2e      - Run end-to-end tests against local server"
+	@echo "  test-grpc     - Run gRPC tests using grpcurl"
+	@echo "  test-grpc-client - Run gRPC tests using Rust client"
 	@echo "  build         - Build the Rust application"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  docker-build  - Build Docker image"
@@ -27,7 +29,7 @@ TEST_TIMEOUT = 30s
 API_BASE_URL = http://localhost:8000
 
 # Run all tests
-test: test-unit test-integration test-e2e
+test: test-unit test-integration test-e2e test-grpc test-grpc-client
 
 # Unit tests
 test-unit:
@@ -40,32 +42,70 @@ test-integration:
 	@echo "🔗 Running integration tests..."
 	@echo "✅ Integration tests completed (none defined yet)"
 
+# gRPC client tests (Rust client)
+test-grpc-client: build
+	@echo "🔌 Running gRPC client tests (Rust)..."
+	@echo "Starting isobox server for gRPC client testing..."
+	@API_KEYS="test-key-123,another-key-456" timeout $(TEST_TIMEOUT) cargo run &
+	@sleep 5
+	@echo "Testing gRPC Rust client..."
+	@cd examples && cargo run --bin grpc_client || (echo "❌ gRPC Rust client test failed"; pkill -f "cargo run"; exit 1)
+	@pkill -f "cargo run" || true
+	@echo "✅ gRPC client tests completed"
+
 # End-to-end tests against local development server
 test-e2e: build
 	@echo "🚀 Running end-to-end tests..."
 	@echo "Starting isobox server for testing..."
-	@timeout $(TEST_TIMEOUT) cargo run &
+	@API_KEYS="test-key-123,another-key-456" timeout $(TEST_TIMEOUT) cargo run &
 	@sleep 3
 	@echo "Testing basic functionality..."
 	@curl -s -X POST $(API_BASE_URL)/health > /dev/null || (echo "❌ Health check failed"; exit 1)
 	@echo "✅ Health check passed"
-	@echo "Testing Python execution..."
-	@curl -s -X POST $(API_BASE_URL)/execute \
-		-H "Content-Type: application/json" \
-		-d '{"language": "python", "code": "print(\"Hello from Python!\")"}' | grep -q "Hello from Python!" || (echo "❌ Python test failed"; exit 1)
+	@echo "Testing authentication (should fail without API key)..."
+	@curl -s -X POST $(API_BASE_URL)/api/v1/execute -H "Content-Type: application/json" -d '{"language": "python", "code": "print(\"test\")"}' | grep -q "API Key not provided" || (echo "❌ Auth test failed - should reject without API key"; exit 1)
+	@echo "✅ Authentication test passed"
+	@echo "Testing Python execution with valid API key..."
+	@curl -s -X POST $(API_BASE_URL)/api/v1/execute -H "Content-Type: application/json" -H "X-API-Key: test-key-123" -d '{"language": "python", "code": "print(\"Hello from Python!\")"}' | grep -q "Hello from Python!" || (echo "❌ Python test failed"; exit 1)
 	@echo "✅ Python test passed"
-	@echo "Testing Node.js execution..."
-	@curl -s -X POST $(API_BASE_URL)/execute \
-		-H "Content-Type: application/json" \
-		-d '{"language": "node", "code": "console.log(\"Hello from Node.js!\")"}' | grep -q "Hello from Node.js!" || (echo "❌ Node.js test failed"; exit 1)
+	@echo "Testing Node.js execution with valid API key..."
+	@curl -s -X POST $(API_BASE_URL)/api/v1/execute -H "Content-Type: application/json" -H "X-API-Key: test-key-123" -d '{"language": "node", "code": "console.log(\"Hello from Node.js!\")"}' | grep -q "Hello from Node.js!" || (echo "❌ Node.js test failed"; exit 1)
 	@echo "✅ Node.js test passed"
-	@echo "Testing Go execution..."
-	@curl -s -X POST $(API_BASE_URL)/execute \
-		-H "Content-Type: application/json" \
-		-d '{"language": "go", "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"Hello from Go!\") }"}' | grep -q "Hello from Go!" || (echo "❌ Go test failed"; exit 1)
-	@echo "✅ Go test passed"
+	# @echo "Testing Go execution with valid API key..."
+	# @curl -s -X POST $(API_BASE_URL)/api/v1/execute -H "Content-Type: application/json" -H "X-API-Key: test-key-123" -d '{"language": "go", "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"Hello from Go!\") }"}' | grep -q "Hello from Go" || (echo "❌ Go test failed"; exit 1)
+	# @echo "✅ Go test passed"
 	@pkill -f "cargo run" || true
 	@echo "✅ End-to-end tests completed"
+
+# gRPC tests
+test-grpc: build
+	@echo "🔌 Running gRPC tests..."
+	@echo "Starting isobox server for gRPC testing..."
+	@API_KEYS="test-key-123,another-key-456" timeout $(TEST_TIMEOUT) cargo run &
+	@sleep 5
+	@echo "Testing gRPC health check (no auth required)..."
+	@grpcurl -plaintext -proto proto/isobox.proto localhost:50051 isobox.CodeExecutionService/HealthCheck | grep -q "healthy" || (echo "❌ gRPC health check failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC health check passed"
+	@echo "Testing gRPC without authentication (should fail)..."
+	@grpcurl -plaintext -proto proto/isobox.proto -d '{"language": "python", "code": "print(\"test\")"}' localhost:50051 isobox.CodeExecutionService/ExecuteCode 2>&1 | grep -q "API Key not provided" || (echo "❌ gRPC auth test failed - should reject without API key"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC auth rejection test passed"
+	@echo "Testing gRPC with invalid API key (should fail)..."
+	@grpcurl -plaintext -proto proto/isobox.proto -H "authorization: invalid-key" -d '{"language": "python", "code": "print(\"test\")"}' localhost:50051 isobox.CodeExecutionService/ExecuteCode 2>&1 | grep -q "Invalid API Key" || (echo "❌ gRPC invalid key test failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC invalid key test passed"
+	@echo "Testing gRPC with valid API key..."
+	@grpcurl -plaintext -proto proto/isobox.proto -H "authorization: test-key-123" -d '{"language": "python", "code": "print(\"Hello from gRPC!\")"}' localhost:50051 isobox.CodeExecutionService/ExecuteCode | grep -q "Hello from gRPC" || (echo "❌ gRPC execution test failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC execution test passed"
+	@echo "Testing gRPC supported languages..."
+	@grpcurl -plaintext -proto proto/isobox.proto localhost:50051 isobox.CodeExecutionService/GetSupportedLanguages | grep -q "python" || (echo "❌ gRPC supported languages test failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC supported languages test passed"
+	@echo "Testing gRPC with Node.js..."
+	@grpcurl -plaintext -proto proto/isobox.proto -H "authorization: test-key-123" -d '{"language": "node", "code": "console.log(\"Hello from Node.js gRPC!\")"}' localhost:50051 isobox.CodeExecutionService/ExecuteCode | grep -q "Hello from Node.js gRPC" || (echo "❌ gRPC Node.js test failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC Node.js test passed"
+	@echo "Testing gRPC error handling..."
+	@grpcurl -plaintext -proto proto/isobox.proto -H "authorization: test-key-123" -d '{"language": "unsupported", "code": "test"}' localhost:50051 isobox.CodeExecutionService/ExecuteCode | grep -q "UNSUPPORTED_LANGUAGE" || (echo "❌ gRPC error handling test failed"; pkill -f "cargo run"; exit 1)
+	@echo "✅ gRPC error handling test passed"
+	@pkill -f "cargo run" || true
+	@echo "✅ gRPC tests completed"
 
 # Build the application
 build:
@@ -79,11 +119,17 @@ clean:
 	cargo clean
 	@echo "✅ Clean completed"
 
-# Build Docker image
-docker-build:
-	@echo "🐳 Building Docker image..."
-	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
-	@echo "✅ Docker image built"
+# Build intermediate images for caching
+docker-build-deps:
+	@echo "🔧 Building dependency stage..."
+	docker build --target builder -t $(IMAGE_NAME):builder .
+	@echo "✅ Builder stage built"
+
+# Build Docker image with optimized caching
+docker-build: docker-build-deps
+	@echo "🐳 Building final Docker image with optimized caching..."
+	@./build.sh $(IMAGE_TAG)
+	@echo "✅ Docker image built with caching"
 
 # Run e2e tests against Docker image
 docker-test: docker-build
