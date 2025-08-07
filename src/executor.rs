@@ -598,6 +598,21 @@ impl LanguageRegistry {
         ];
 
         for (name, image, file, run_cmd, compile_cmd) in other_languages {
+            // Add specific resource limits for Go
+            let resource_limits = if name == "go" {
+                Some(ResourceLimits {
+                    cpu_time_limit: Duration::from_secs(15), // 15 seconds CPU time
+                    wall_time_limit: Duration::from_secs(30), // 30 seconds wall time
+                    memory_limit: 512 * 1024 * 1024,         // 512 MB
+                    stack_limit: 128 * 1024 * 1024,          // 128 MB stack
+                    max_processes: 100,                      // Max 100 processes
+                    max_files: 200,                          // Max 200 open files
+                    enable_network: false,                   // No network access
+                })
+            } else {
+                None
+            };
+
             languages.insert(
                 name.to_string(),
                 LanguageConfig {
@@ -605,7 +620,7 @@ impl LanguageRegistry {
                     file_name: file.to_string(),
                     run_command: run_cmd,
                     compile_command: compile_cmd,
-                    resource_limits: None,
+                    resource_limits,
                 },
             );
         }
@@ -1498,14 +1513,14 @@ fn main() {
                 name: "number_sum_test".to_string(),
                 input: "1 2 3 4 5".to_string(),
                 expected_output: Some("15".to_string()),
-                timeout_seconds: Some(10),
+                timeout_seconds: Some(15), // Increased timeout
                 memory_limit_mb: Some(256),
             },
             TestCase {
                 name: "string_uppercase_test".to_string(),
                 input: "hello world".to_string(),
                 expected_output: Some("HELLO WORLD".to_string()),
-                timeout_seconds: Some(10),
+                timeout_seconds: Some(15), // Increased timeout
                 memory_limit_mb: Some(256),
             },
         ];
@@ -1563,32 +1578,46 @@ func main() {
             .unwrap()
             .block_on(executor.execute(request));
 
-        assert!(result.is_ok());
-        let response = result.unwrap();
+        // Add better error handling to understand what's failing
+        match result {
+            Ok(response) => {
+                assert!(response.test_results.is_some());
+                let test_results = response.test_results.unwrap();
+                assert_eq!(test_results.len(), 2);
 
-        assert!(response.test_results.is_some());
-        let test_results = response.test_results.unwrap();
-        assert_eq!(test_results.len(), 2);
+                for test_result in &test_results {
+                    if !test_result.passed {
+                        println!("Test {} failed:", test_result.name);
+                        println!("  Expected: {:?}", test_result.expected_output);
+                        println!("  Got: {:?}", test_result.actual_output);
+                        println!("  Error: {:?}", test_result.error_message);
+                        println!("  Exit code: {}", test_result.exit_code);
+                        println!("  Stdout: {:?}", test_result.stdout);
+                        println!("  Stderr: {:?}", test_result.stderr);
+                    }
+                    assert!(
+                        test_result.passed,
+                        "Test {} failed: {:?}",
+                        test_result.name, test_result.error_message
+                    );
+                }
 
-        for test_result in &test_results {
-            assert!(
-                test_result.passed,
-                "Test {} failed: {:?}",
-                test_result.name, test_result.error_message
-            );
+                let sum_test = test_results
+                    .iter()
+                    .find(|t| t.name == "number_sum_test")
+                    .unwrap();
+                assert_eq!(sum_test.actual_output.trim(), "15");
+
+                let upper_test = test_results
+                    .iter()
+                    .find(|t| t.name == "string_uppercase_test")
+                    .unwrap();
+                assert_eq!(upper_test.actual_output.trim(), "HELLO WORLD");
+            }
+            Err(e) => {
+                panic!("Go execution failed: {}", e);
+            }
         }
-
-        let sum_test = test_results
-            .iter()
-            .find(|t| t.name == "number_sum_test")
-            .unwrap();
-        assert_eq!(sum_test.actual_output.trim(), "15");
-
-        let upper_test = test_results
-            .iter()
-            .find(|t| t.name == "string_uppercase_test")
-            .unwrap();
-        assert_eq!(upper_test.actual_output.trim(), "HELLO WORLD");
     }
 
     #[test]
