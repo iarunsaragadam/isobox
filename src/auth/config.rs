@@ -22,6 +22,7 @@ pub struct AuthConfig {
     pub oauth2_config: Option<OAuth2Config>,
     pub dedup_config: Option<DedupConfig>,
     pub cache_config: CacheConfig,
+    pub cors_config: CorsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -89,6 +90,8 @@ pub enum OAuth2Provider {
     GitHub,
     Firebase,
     Cognito,
+    Microsoft,
+    Custom,
 }
 
 impl std::str::FromStr for OAuth2Provider {
@@ -101,12 +104,24 @@ impl std::str::FromStr for OAuth2Provider {
             "github" => Ok(OAuth2Provider::GitHub),
             "firebase" => Ok(OAuth2Provider::Firebase),
             "cognito" => Ok(OAuth2Provider::Cognito),
+            "microsoft" => Ok(OAuth2Provider::Microsoft),
+            "custom" => Ok(OAuth2Provider::Custom),
             _ => Err(ConfigError::InvalidValue(format!(
                 "Unknown OAuth2 provider: {}",
                 s
             ))),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CorsConfig {
+    pub enabled: bool,
+    pub allowed_origins: Vec<String>,
+    pub allowed_methods: Vec<String>,
+    pub allowed_headers: Vec<String>,
+    pub allow_credentials: bool,
+    pub max_age: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -184,6 +199,7 @@ impl AuthConfig {
         };
 
         let cache_config = CacheConfig::from_env()?;
+        let cors_config = CorsConfig::from_env()?;
 
         Ok(AuthConfig {
             auth_type,
@@ -193,6 +209,7 @@ impl AuthConfig {
             oauth2_config,
             dedup_config,
             cache_config,
+            cors_config,
         })
     }
 
@@ -208,6 +225,78 @@ impl AuthConfig {
                 auth_cache_ttl: Duration::from_secs(3600),
                 max_cache_size: 1000,
             },
+            cors_config: CorsConfig::default(),
+        }
+    }
+}
+
+impl CorsConfig {
+    pub fn from_env() -> Result<Self, ConfigError> {
+        let enabled = std::env::var("CORS_ENABLED")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
+        let allowed_origins = if enabled {
+            let origins_str =
+                std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "*".to_string());
+            origins_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let allowed_methods = if enabled {
+            let methods_str = std::env::var("CORS_ALLOWED_METHODS")
+                .unwrap_or_else(|_| "GET,POST,PUT,DELETE,OPTIONS".to_string());
+            methods_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let allowed_headers = if enabled {
+            let headers_str = std::env::var("CORS_ALLOWED_HEADERS")
+                .unwrap_or_else(|_| "Content-Type,Authorization,X-API-Key".to_string());
+            headers_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let allow_credentials = std::env::var("CORS_ALLOW_CREDENTIALS")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
+        let max_age = std::env::var("CORS_MAX_AGE")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok());
+
+        Ok(CorsConfig {
+            enabled,
+            allowed_origins,
+            allowed_methods,
+            allowed_headers,
+            allow_credentials,
+            max_age,
+        })
+    }
+
+    pub fn default() -> Self {
+        Self {
+            enabled: false,
+            allowed_origins: vec![],
+            allowed_methods: vec![],
+            allowed_headers: vec![],
+            allow_credentials: false,
+            max_age: None,
         }
     }
 }

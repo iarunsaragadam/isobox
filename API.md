@@ -1,6 +1,6 @@
 # Isobox API Documentation
 
-Isobox is a secure code execution REST API that allows you to execute arbitrary code in isolated Docker containers with comprehensive resource limits and timeout protection. This document provides comprehensive API documentation.
+Isobox is a secure code execution REST API that allows you to execute arbitrary code in isolated Docker containers with comprehensive resource limits, timeout protection, and test case functionality. This document provides comprehensive API documentation.
 
 ## Base URL
 
@@ -10,7 +10,19 @@ http://localhost:8000
 
 ## Authentication
 
-Currently, the API does not require authentication. All endpoints are publicly accessible.
+Isobox uses API key authentication for all execution endpoints. You must include your API key in the `X-API-Key` header.
+
+### Environment Configuration
+
+Set your API keys using the `API_KEYS` environment variable:
+
+```bash
+export API_KEYS="your-api-key-1,your-api-key-2,default-key"
+```
+
+### Default API Key
+
+For development, the default API key is `default-key` if no `API_KEYS` environment variable is set.
 
 ## Endpoints
 
@@ -20,13 +32,14 @@ Currently, the API does not require authentication. All endpoints are publicly a
 
 **Description:** Check if the service is running and healthy.
 
+**Authentication:** Not required
+
 **Response:**
 
 ```json
 {
   "service": "isobox",
-  "status": "healthy",
-  "version": "0.1.0"
+  "status": "healthy"
 }
 ```
 
@@ -38,16 +51,19 @@ curl http://localhost:8000/health
 
 ### 2. Execute Code
 
-**Endpoint:** `POST /execute`
+**Endpoint:** `POST /api/v1/execute`
 
 **Description:** Execute code in an isolated Docker container with resource limits and timeout protection.
+
+**Authentication:** Required (`X-API-Key` header)
 
 **Request Body:**
 
 ```json
 {
   "language": "string",
-  "code": "string"
+  "code": "string",
+  "test_cases": "array (optional)"
 }
 ```
 
@@ -55,6 +71,7 @@ curl http://localhost:8000/health
 
 - `language` (required): The programming language to use. See supported languages below.
 - `code` (required): The source code to execute
+- `test_cases` (optional): Array of test cases to run against the code
 
 **Response:**
 
@@ -64,7 +81,8 @@ curl http://localhost:8000/health
   "stderr": "string",
   "exit_code": number,
   "time_taken": number,
-  "memory_used": number
+  "memory_used": number,
+  "test_results": "array (optional)"
 }
 ```
 
@@ -75,16 +93,238 @@ curl http://localhost:8000/health
 - `exit_code`: Program exit code (0 for success, non-zero for errors)
 - `time_taken`: Execution time in seconds (if available)
 - `memory_used`: Memory usage in bytes (if available)
+- `test_results`: Array of test case results (if test cases were provided)
 
 **Example:**
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "python",
     "code": "print(\"Hello, World!\")"
   }'
+```
+
+### 3. Execute Code with Inline Test Cases
+
+**Endpoint:** `POST /api/v1/execute/test-cases`
+
+**Description:** Execute code against multiple inline test cases with stdin input.
+
+**Authentication:** Required (`X-API-Key` header)
+
+**Request Body:**
+
+```json
+{
+  "language": "string",
+  "code": "string",
+  "test_cases": [
+    {
+      "name": "string",
+      "input": "string",
+      "expected_output": "string (optional)",
+      "timeout_seconds": "number (optional)",
+      "memory_limit_mb": "number (optional)"
+    }
+  ]
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/execute/test-cases \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
+  -d '{
+    "language": "python",
+    "code": "import sys\nprint(sum(int(x) for x in sys.stdin.read().split()))",
+    "test_cases": [
+      {
+        "name": "test_1",
+        "input": "1 2 3",
+        "expected_output": "6",
+        "timeout_seconds": 5,
+        "memory_limit_mb": 128
+      },
+      {
+        "name": "test_2",
+        "input": "10 20 30",
+        "expected_output": "60",
+        "timeout_seconds": 5,
+        "memory_limit_mb": 128
+      }
+    ]
+  }'
+```
+
+### 4. Execute Code with Test Files
+
+**Endpoint:** `POST /api/v1/execute/test-files`
+
+**Description:** Execute code against test cases defined as file content.
+
+**Authentication:** Required (`X-API-Key` header)
+
+**Request Body:**
+
+```json
+{
+  "language": "string",
+  "code": "string",
+  "test_files": [
+    {
+      "name": "string",
+      "content": "string"
+    }
+  ]
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/execute/test-files \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
+  -d '{
+    "language": "python",
+    "code": "import sys\nprint(sys.stdin.read().strip()[::-1])",
+    "test_files": [
+      {
+        "name": "string_test",
+        "content": "Hello World"
+      },
+      {
+        "name": "number_test",
+        "content": "12345"
+      }
+    ]
+  }'
+```
+
+### 5. Execute Code with Test URLs
+
+**Endpoint:** `POST /api/v1/execute/test-urls`
+
+**Description:** Execute code against test cases downloaded from URLs.
+
+**Authentication:** Required (`X-API-Key` header)
+
+**Request Body:**
+
+```json
+{
+  "language": "string",
+  "code": "string",
+  "test_urls": [
+    {
+      "name": "string",
+      "url": "string"
+    }
+  ]
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/execute/test-urls \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
+  -d '{
+    "language": "python",
+    "code": "import sys\nprint(len(sys.stdin.read().strip()))",
+    "test_urls": [
+      {
+        "name": "remote_test_1",
+        "url": "https://example.com/test1.txt"
+      },
+      {
+        "name": "remote_test_2",
+        "url": "https://example.com/test2.txt"
+      }
+    ]
+  }'
+```
+
+### 6. Authentication Status
+
+**Endpoint:** `GET /auth/status`
+
+**Description:** Check authentication status.
+
+**Authentication:** Not required
+
+**Response:**
+
+```json
+{
+  "authenticated": false,
+  "message": "Authentication not implemented in simplified version"
+}
+```
+
+### 7. Deduplication Statistics
+
+**Endpoint:** `GET /admin/dedup/stats`
+
+**Description:** Get deduplication statistics.
+
+**Authentication:** Not required
+
+**Response:**
+
+```json
+{
+  "dedup_enabled": false,
+  "message": "Deduplication not implemented in simplified version"
+}
+```
+
+## Test Case Response Format
+
+When executing with test cases, the response includes detailed test results:
+
+```json
+{
+  "stdout": "=== Test Case: test_1 ===\n6\n\n=== Test Case: test_2 ===\n60\n",
+  "stderr": "",
+  "exit_code": 0,
+  "time_taken": null,
+  "memory_used": null,
+  "test_results": [
+    {
+      "name": "test_1",
+      "passed": true,
+      "stdout": "6",
+      "stderr": "",
+      "exit_code": 0,
+      "time_taken": 0.123,
+      "memory_used": null,
+      "error_message": null,
+      "input": "1 2 3",
+      "expected_output": "6",
+      "actual_output": "6"
+    },
+    {
+      "name": "test_2",
+      "passed": true,
+      "stdout": "60",
+      "stderr": "",
+      "exit_code": 0,
+      "time_taken": 0.098,
+      "memory_used": null,
+      "error_message": null,
+      "input": "10 20 30",
+      "expected_output": "60",
+      "actual_output": "60"
+    }
+  ]
+}
 ```
 
 ## Resource Limits & Security
@@ -184,11 +424,12 @@ Isobox supports **50+ programming languages** including all major languages supp
 
 ## Examples
 
-### Python Example
+### Basic Python Execution
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "python",
     "code": "import math\nprint(f\"π = {math.pi}\")\nprint(f\"e = {math.e}\")"
@@ -210,8 +451,9 @@ curl -X POST http://localhost:8000/execute \
 ### Rust Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "rust",
     "code": "fn main() {\n    let numbers: Vec<i32> = (1..=10).collect();\n    let sum: i32 = numbers.iter().sum();\n    println!(\"Sum of 1 to 10: {}\", sum);\n}"
@@ -221,8 +463,9 @@ curl -X POST http://localhost:8000/execute \
 ### Java Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "java",
     "code": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from Java!\");\n    }\n}"
@@ -232,8 +475,9 @@ curl -X POST http://localhost:8000/execute \
 ### Go Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "go",
     "code": "package main\n\nimport (\n    \"fmt\"\n    \"time\"\n)\n\nfunc main() {\n    fmt.Println(\"Hello from Go!\")\n    fmt.Printf(\"Current time: %s\\n\", time.Now().Format(time.RFC3339))\n}"
@@ -243,8 +487,9 @@ curl -X POST http://localhost:8000/execute \
 ### Node.js Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "node",
     "code": "console.log(\"Hello from Node.js!\"); console.log(\"Current time:\", new Date().toISOString());"
@@ -254,8 +499,9 @@ curl -X POST http://localhost:8000/execute \
 ### C++ Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "cpp",
     "code": "#include <iostream>\n#include <vector>\n#include <algorithm>\n\nint main() {\n    std::vector<int> numbers = {3, 1, 4, 1, 5, 9, 2, 6};\n    std::sort(numbers.begin(), numbers.end());\n    for (int n : numbers) {\n        std::cout << n << \" \";\n    }\n    std::cout << std::endl;\n    return 0;\n}"
@@ -265,8 +511,9 @@ curl -X POST http://localhost:8000/execute \
 ### Timeout Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "python",
     "code": "import time\nwhile True:\n    print(\"Infinite loop\")\n    time.sleep(1)"
@@ -288,8 +535,9 @@ curl -X POST http://localhost:8000/execute \
 ### Memory Limit Example
 
 ```bash
-curl -X POST http://localhost:8000/execute \
+curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: default-key" \
   -d '{
     "language": "python",
     "code": "data = [0] * (1024 * 1024 * 200)  # Try to allocate 200MB"
@@ -309,6 +557,24 @@ curl -X POST http://localhost:8000/execute \
 ```
 
 ## Error Responses
+
+### Missing API Key
+
+```json
+{
+  "error": "API Key not provided",
+  "message": "Please provide an X-API-Key header"
+}
+```
+
+### Invalid API Key
+
+```json
+{
+  "error": "Invalid API Key",
+  "message": "The provided API key is not valid"
+}
+```
 
 ### Unsupported Language
 
@@ -358,23 +624,57 @@ curl -X POST http://localhost:8000/execute \
 }
 ```
 
+### Test Case Download Error
+
+```json
+{
+  "error": "Failed to download test case",
+  "message": "Failed to download https://example.com/test.txt: Connection failed"
+}
+```
+
 ## Environment Variables
 
 The service can be configured using the following environment variables:
 
 - `PORT`: Server port (default: 8000)
+- `GRPC_PORT`: gRPC server port (default: 50051)
 - `RUST_LOG`: Log level (default: info)
+- `API_KEYS`: Comma-separated list of valid API keys (default: "default-key")
 
 ## Docker Deployment
 
 To run the service using Docker:
 
 ```bash
-docker run -p 8000:8000 \
+docker run -p 8000:8000 -p 50051:50051 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /tmp:/tmp \
+  -e API_KEYS="your-api-key-1,your-api-key-2" \
   --user root \
   ghcr.io/yourusername/isobox:latest
+```
+
+## gRPC API
+
+Isobox also provides a gRPC API on port 50051. See the `proto/isobox.proto` file for the complete gRPC service definition.
+
+### gRPC Endpoints
+
+- `ExecuteCode`: Execute code in a specified language
+- `HealthCheck`: Health check endpoint
+- `GetSupportedLanguages`: Get list of supported languages
+
+### gRPC Authentication
+
+Include the API key in the `authorization` metadata:
+
+```bash
+grpcurl -plaintext \
+  -proto proto/isobox.proto \
+  -H "authorization: your-api-key-here" \
+  -d '{"language": "python", "code": "print(\"Hello World!\")"}' \
+  localhost:50051 isobox.CodeExecutionService/ExecuteCode
 ```
 
 ## Performance Considerations
@@ -385,6 +685,7 @@ docker run -p 8000:8000 \
 - **Execution Time**: Scripting languages typically start faster than compiled languages
 - **Resource Limits**: All executions are subject to timeout and memory constraints
 - **Container Overhead**: Each execution creates a new isolated container
+- **Test Cases**: Multiple test cases run sequentially in separate containers
 
 ## Development
 
@@ -416,11 +717,13 @@ For development setup and contributing guidelines, see the main [README.md](READ
 
 ### Common Issues
 
-1. **Language Not Supported**: Check the supported languages list above
-2. **Compilation Errors**: Review the `stderr` output for specific error messages
-3. **Timeout Issues**: Programs may be terminated if they exceed the time limit
-4. **Memory Issues**: Large programs may exceed container memory limits
-5. **Resource Limits**: Check if your program is hitting CPU, memory, or process limits
+1. **Missing API Key**: Ensure you include the `X-API-Key` header with a valid API key
+2. **Language Not Supported**: Check the supported languages list above
+3. **Compilation Errors**: Review the `stderr` output for specific error messages
+4. **Timeout Issues**: Programs may be terminated if they exceed the time limit
+5. **Memory Issues**: Large programs may exceed container memory limits
+6. **Resource Limits**: Check if your program is hitting CPU, memory, or process limits
+7. **Test Case Issues**: Ensure test case input format matches your code's expectations
 
 ### Debugging
 
@@ -438,6 +741,7 @@ This will provide detailed information about:
 - Cleanup processes
 - Resource limit enforcement
 - Timeout handling
+- Authentication checks
 
 ### Resource Limit Troubleshooting
 
@@ -455,6 +759,7 @@ If your program is hitting resource limits:
 - **Privilege Dropping**: Containers run with minimal privileges
 - **Ephemeral Execution**: No data persists between executions
 - **Automatic Cleanup**: All temporary files and containers are removed
+- **API Key Authentication**: All execution endpoints require valid API keys
 
 ## Rate Limiting
 

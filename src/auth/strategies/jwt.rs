@@ -137,7 +137,7 @@ impl JwtAuthStrategy {
 
 #[async_trait]
 impl AuthStrategy for JwtAuthStrategy {
-    async fn authenticate(&self, request: HttpRequest) -> Result<AuthResult, AuthError> {
+    async fn authenticate(&self, request: &HttpRequest) -> Result<AuthResult, AuthError> {
         // Extract token from request
         let token = self.extract_token_from_header(&request)?;
 

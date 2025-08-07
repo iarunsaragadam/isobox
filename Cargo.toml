@@ -6,9 +6,7 @@ description = "Secure Code Execution API - Execute arbitrary code in isolated Do
 license = "MIT"
 authors = ["Your Name <your.email@example.com>"]
 
-[lib]
-name = "isobox"
-path = "src/lib.rs"
+
 
 [dependencies]
 actix-web = "4.0"
@@ -37,6 +35,9 @@ rustls = "0.21"
 rustls-pemfile = "1.0"
 webpki-roots = "0.25"
 futures-util = "0.3"
+
+# CORS support
+actix-cors = "0.6"
 
 [build-dependencies]
 tonic-build = "0.10"

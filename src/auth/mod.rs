@@ -33,9 +33,9 @@ impl AuthService {
         Ok(Self { strategy, cache })
     }
 
-    pub async fn authenticate(&self, request: HttpRequest) -> Result<AuthResult, AuthError> {
+    pub async fn authenticate(&self, request: &HttpRequest) -> Result<AuthResult, AuthError> {
         // Check cache first
-        if let Some(cached_result) = self.cache.get_cached_auth(&request).await? {
+        if let Some(cached_result) = self.cache.get_cached_auth(request).await? {
             return Ok(cached_result);
         }
 

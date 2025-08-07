@@ -6,7 +6,9 @@ use crate::executor::{CodeExecutor, ExecuteRequest, TestCase};
 use crate::grpc::CodeExecutionServiceImpl;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
+use serde_json::Value;
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
@@ -42,21 +44,38 @@ pub struct ExecuteWithTestUrlsRequest {
     pub test_urls: Vec<TestCaseUrl>,
 }
 
-async fn execute_code(
-    executor: web::Data<Arc<CodeExecutor>>,
-    request: web::Json<crate::executor::ExecuteRequest>,
-    http_request: HttpRequest,
-) -> Result<HttpResponse> {
-    // Simple API key check
-    let api_key = http_request.headers().get("X-API-Key");
+// Simple authentication function
+fn authenticate_request(request: &HttpRequest) -> Result<(), HttpResponse> {
+    // Check if authentication is disabled
+    let auth_enabled = std::env::var("AUTH_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse::<bool>()
+        .unwrap_or(true);
+
+    if !auth_enabled {
+        return Ok(());
+    }
+
+    // Check authentication type
+    let auth_type = std::env::var("AUTH_TYPE").unwrap_or_else(|_| "apikey".to_string());
+
+    match auth_type.as_str() {
+        "jwt" => authenticate_jwt(request),
+        "apikey" | _ => authenticate_apikey(request),
+    }
+}
+
+fn authenticate_apikey(request: &HttpRequest) -> Result<(), HttpResponse> {
+    // Get API key from header
+    let api_key = request.headers().get("X-API-Key");
     if api_key.is_none() {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+        return Err(HttpResponse::Unauthorized().json(serde_json::json!({
             "error": "API Key not provided",
             "message": "Please provide an X-API-Key header"
         })));
     }
 
-    // Validate API key (simple check for now)
+    // Validate API key
     let provided_key = api_key.unwrap().to_str().unwrap_or("");
     let api_keys_str = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
     let valid_keys = api_keys_str
@@ -65,10 +84,82 @@ async fn execute_code(
         .collect::<Vec<_>>();
 
     if !valid_keys.contains(&provided_key) {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+        return Err(HttpResponse::Unauthorized().json(serde_json::json!({
             "error": "Invalid API Key",
             "message": "The provided API key is not valid"
         })));
+    }
+
+    Ok(())
+}
+
+fn authenticate_jwt(request: &HttpRequest) -> Result<(), HttpResponse> {
+    // Get JWT token from Authorization header
+    let auth_header = request.headers().get("Authorization");
+    if auth_header.is_none() {
+        return Err(HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": "Authorization header not provided",
+            "message": "Please provide an Authorization header with Bearer token"
+        })));
+    }
+
+    let auth_value = auth_header.unwrap().to_str().unwrap_or("");
+    if !auth_value.starts_with("Bearer ") {
+        return Err(HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": "Invalid Authorization header format",
+            "message": "Authorization header must start with 'Bearer '"
+        })));
+    }
+
+    let token = &auth_value[7..]; // Remove "Bearer " prefix
+
+    // Get JWT configuration from environment
+    let issuer_url = std::env::var("JWT_ISSUER_URL").unwrap_or_default();
+    let audience = std::env::var("JWT_AUDIENCE").unwrap_or_default();
+    let public_key_url = std::env::var("JWT_PUBLIC_KEY_URL").unwrap_or_default();
+
+    // For now, we'll do basic JWT validation
+    // In a production system, you'd fetch the public keys from the URL
+    match validate_jwt_token(token, &issuer_url, &audience) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": "Invalid JWT token",
+            "message": e
+        }))),
+    }
+}
+
+fn validate_jwt_token(token: &str, issuer_url: &str, audience: &str) -> Result<(), String> {
+    // For Firebase JWT, we need to fetch the public keys
+    // This is a simplified version - in production you'd cache the keys
+    if issuer_url.is_empty() || audience.is_empty() {
+        return Err("JWT configuration incomplete".to_string());
+    }
+
+    // For now, we'll just decode the token to check its structure
+    // In a real implementation, you'd verify the signature with the public keys
+    match decode::<Value>(
+        token,
+        &DecodingKey::from_secret("dummy".as_ref()), // This won't work for real verification
+        &Validation::new(Algorithm::RS256),
+    ) {
+        Ok(_) => {
+            // Token structure is valid (but signature not verified)
+            // In production, you'd verify the signature here
+            Ok(())
+        }
+        Err(e) => Err(format!("JWT validation failed: {}", e)),
+    }
+}
+
+async fn execute_code(
+    executor: web::Data<Arc<CodeExecutor>>,
+    request: web::Json<crate::executor::ExecuteRequest>,
+    http_request: HttpRequest,
+) -> Result<HttpResponse> {
+    // Authenticate request
+    if let Err(response) = authenticate_request(&http_request) {
+        return Ok(response);
     }
 
     let result = executor.execute(request.into_inner()).await;
@@ -90,15 +181,22 @@ async fn health_check() -> Result<HttpResponse> {
 }
 
 async fn auth_status(_request: HttpRequest) -> Result<HttpResponse> {
-    // Simple authentication status endpoint
+    let auth_enabled = std::env::var("AUTH_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse::<bool>()
+        .unwrap_or(true);
+
+    let auth_type = std::env::var("AUTH_TYPE").unwrap_or_else(|_| "apikey".to_string());
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "authenticated": false,
-        "message": "Authentication not implemented in simplified version"
+        "auth_enabled": auth_enabled,
+        "auth_type": auth_type,
+        "message": "Authentication status endpoint"
     })))
 }
 
 async fn dedup_stats(_executor: web::Data<Arc<CodeExecutor>>) -> Result<HttpResponse> {
-    // Simple dedup stats endpoint
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "dedup_enabled": false,
         "message": "Deduplication not implemented in simplified version"
@@ -110,28 +208,9 @@ async fn execute_with_test_cases(
     request: web::Json<ExecuteWithTestCasesRequest>,
     http_request: HttpRequest,
 ) -> Result<HttpResponse> {
-    // Simple API key check
-    let api_key = http_request.headers().get("X-API-Key");
-    if api_key.is_none() {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "API Key not provided",
-            "message": "Please provide an X-API-Key header"
-        })));
-    }
-
-    // Validate API key (simple check for now)
-    let provided_key = api_key.unwrap().to_str().unwrap_or("");
-    let api_keys_str = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
-    let valid_keys = api_keys_str
-        .split(',')
-        .map(|s| s.trim())
-        .collect::<Vec<_>>();
-
-    if !valid_keys.contains(&provided_key) {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "Invalid API Key",
-            "message": "The provided API key is not valid"
-        })));
+    // Authenticate request
+    if let Err(response) = authenticate_request(&http_request) {
+        return Ok(response);
     }
 
     let execute_request = ExecuteRequest {
@@ -141,7 +220,6 @@ async fn execute_with_test_cases(
     };
 
     let result = executor.execute(execute_request).await;
-
     match result {
         Ok(response) => Ok(HttpResponse::Ok().json(response)),
         Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
@@ -156,28 +234,9 @@ async fn execute_with_test_files(
     request: web::Json<ExecuteWithTestFilesRequest>,
     http_request: HttpRequest,
 ) -> Result<HttpResponse> {
-    // Simple API key check
-    let api_key = http_request.headers().get("X-API-Key");
-    if api_key.is_none() {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "API Key not provided",
-            "message": "Please provide an X-API-Key header"
-        })));
-    }
-
-    // Validate API key (simple check for now)
-    let provided_key = api_key.unwrap().to_str().unwrap_or("");
-    let api_keys_str = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
-    let valid_keys = api_keys_str
-        .split(',')
-        .map(|s| s.trim())
-        .collect::<Vec<_>>();
-
-    if !valid_keys.contains(&provided_key) {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "Invalid API Key",
-            "message": "The provided API key is not valid"
-        })));
+    // Authenticate request
+    if let Err(response) = authenticate_request(&http_request) {
+        return Ok(response);
     }
 
     // Convert test files to test cases
@@ -200,7 +259,6 @@ async fn execute_with_test_files(
     };
 
     let result = executor.execute(execute_request).await;
-
     match result {
         Ok(response) => Ok(HttpResponse::Ok().json(response)),
         Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
@@ -215,28 +273,9 @@ async fn execute_with_test_urls(
     request: web::Json<ExecuteWithTestUrlsRequest>,
     http_request: HttpRequest,
 ) -> Result<HttpResponse> {
-    // Simple API key check
-    let api_key = http_request.headers().get("X-API-Key");
-    if api_key.is_none() {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "API Key not provided",
-            "message": "Please provide an X-API-Key header"
-        })));
-    }
-
-    // Validate API key (simple check for now)
-    let provided_key = api_key.unwrap().to_str().unwrap_or("");
-    let api_keys_str = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
-    let valid_keys = api_keys_str
-        .split(',')
-        .map(|s| s.trim())
-        .collect::<Vec<_>>();
-
-    if !valid_keys.contains(&provided_key) {
-        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": "Invalid API Key",
-            "message": "The provided API key is not valid"
-        })));
+    // Authenticate request
+    if let Err(response) = authenticate_request(&http_request) {
+        return Ok(response);
     }
 
     // Download test cases from URLs
@@ -268,7 +307,6 @@ async fn execute_with_test_urls(
     };
 
     let result = executor.execute(execute_request).await;
-
     match result {
         Ok(response) => Ok(HttpResponse::Ok().json(response)),
         Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
@@ -289,6 +327,27 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     log::info!("Starting IsoBox server...");
+
+    // Log configuration
+    let auth_enabled = std::env::var("AUTH_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse::<bool>()
+        .unwrap_or(true);
+
+    let auth_type = std::env::var("AUTH_TYPE").unwrap_or_else(|_| "apikey".to_string());
+
+    log::info!("Authentication enabled: {}", auth_enabled);
+    log::info!("Authentication type: {}", auth_type);
+
+    if auth_type == "apikey" {
+        let api_keys = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
+        log::info!("API keys configured: {}", api_keys.replace(',', ", "));
+    } else if auth_type == "jwt" {
+        let issuer_url = std::env::var("JWT_ISSUER_URL").unwrap_or_default();
+        let audience = std::env::var("JWT_AUDIENCE").unwrap_or_default();
+        log::info!("JWT issuer URL: {}", issuer_url);
+        log::info!("JWT audience: {}", audience);
+    }
 
     // Create executor without deduplication
     let executor = Arc::new(CodeExecutor::new());
@@ -316,8 +375,8 @@ async fn main() -> std::io::Result<()> {
     log::info!("HTTP server starting on {}", bind_address);
     log::info!("gRPC server starting on {}", grpc_address);
 
-    // Create gRPC service with authentication
-    let grpc_service = CodeExecutionServiceImpl::new(executor.clone(), None); // No auth service for now
+    // Create gRPC service without authentication for now
+    let grpc_service = CodeExecutionServiceImpl::new(executor.clone(), None);
 
     // Start gRPC server in a separate task
     let grpc_service_clone = grpc_service.clone();
