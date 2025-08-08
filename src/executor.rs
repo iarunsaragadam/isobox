@@ -636,6 +636,7 @@ struct FileManager;
 
 impl FileManager {
     fn create_temp_directory(job_id: &str) -> Result<String, ExecutionError> {
+        // Create temp directory on host system with proper permissions
         let temp_dir = format!("/tmp/isobox-{}", job_id);
 
         log::info!("Creating temp directory: {}", temp_dir);
@@ -661,12 +662,39 @@ impl FileManager {
             )));
         }
 
+        // Write the file
         fs::write(&file_path, code).map_err(|e| ExecutionError::FileWrite(e.to_string()))?;
+
+        // Force sync to ensure the file is written to disk
+        if let Ok(file) = std::fs::File::open(&file_path) {
+            file.sync_all()
+                .map_err(|e| ExecutionError::FileWrite(format!("Failed to sync file: {}", e)))?;
+        }
 
         // Verify the file was actually written
         match fs::metadata(&file_path) {
             Ok(metadata) => {
                 log::info!("File created successfully. Size: {} bytes", metadata.len());
+
+                // Additional verification: read the file back to ensure it was written correctly
+                match fs::read_to_string(&file_path) {
+                    Ok(content) => {
+                        log::info!(
+                            "File content verification: {} bytes read back",
+                            content.len()
+                        );
+                        if content != code {
+                            log::warn!(
+                                "File content mismatch! Expected {} bytes, got {} bytes",
+                                code.len(),
+                                content.len()
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to read back file for verification: {}", e);
+                    }
+                }
             }
             Err(e) => {
                 log::error!("Failed to verify file creation: {}", e);
@@ -815,15 +843,20 @@ impl CodeExecutor {
 
         // Ensure cleanup happens even if execution fails
         let result = if let Some(test_cases) = request.test_cases {
-            self.execute_with_test_cases(&temp_dir, config, &request.code, test_cases)
-                .await
+            let result = self
+                .execute_with_test_cases(&temp_dir, config, &request.code, test_cases)
+                .await;
+            // Clean up temp directory after execution
+            FileManager::cleanup_temp_directory(&temp_dir);
+            result
         } else {
-            self.execute_in_container(&temp_dir, config, &request.code)
-                .await
+            let result = self
+                .execute_in_container(&temp_dir, config, &request.code)
+                .await;
+            // Clean up temp directory after execution
+            FileManager::cleanup_temp_directory(&temp_dir);
+            result
         };
-
-        // Clean up temp directory
-        FileManager::cleanup_temp_directory(&temp_dir);
 
         result
     }
@@ -1006,6 +1039,18 @@ impl CodeExecutor {
     ) -> Result<ExecuteResponse, ExecutionError> {
         // Write code to file
         FileManager::write_code_file(temp_dir, config.file_name(), code)?;
+
+        // Verify file exists before running Docker
+        let file_path = format!("{}/{}", temp_dir, config.file_name());
+        if !std::path::Path::new(&file_path).exists() {
+            return Err(ExecutionError::FileWrite(format!(
+                "File does not exist after creation: {}",
+                file_path
+            )));
+        }
+
+        // Small delay to ensure file is properly synced
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Get resource limits for this language (use language-specific or default)
         let limits = config.resource_limits().unwrap_or(&self.resource_limits);

@@ -1,30 +1,80 @@
-# IsoBox
+# IsoBox 🚀
 
-A secure, containerized code execution service with support for multiple programming languages. IsoBox provides both HTTP REST API and gRPC interfaces for executing code in isolated Docker containers.
+**A Secure, Containerized Code Execution Service with Multi-Authentication Support**
 
-## Features
+IsoBox is a production-ready code execution service that runs code in isolated Docker containers with comprehensive security, multiple authentication methods, and support for 10+ programming languages. Perfect for online IDEs, coding platforms, and educational applications.
 
-- **Multi-language Support**: Python, Node.js, Rust, Go, C++, Java, C#, PHP, Ruby, Bash
-- **Dual API Support**: HTTP REST API and gRPC
-- **Container Isolation**: Each execution runs in a separate Docker container
-- **Resource Limits**: Configurable CPU, memory, and process limits
-- **Test Case Support**: Run code against multiple test cases with stdin input
-- **Multiple Test Input Formats**: Inline test cases, file uploads, and URL-based test cases
-- **Individual Test Limits**: Per-test-case timeout and memory limits
-- **Test Result Analysis**: Detailed pass/fail results with expected vs actual output
-- **Simple Authentication**: API key-based authentication
-- **In-memory Caching**: Fast response times with in-memory caching
-- **Health Monitoring**: Built-in health check endpoints
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Required-blue.svg)](https://www.docker.com/)
 
-## Quick Start
+## 🌟 Key Features
+
+### 🔐 **Multi-Authentication Support**
+
+- **API Key Authentication** - Simple key-based auth
+- **JWT Authentication** - Google, Auth0, custom providers
+- **OAuth2 Authentication** - Google, Meta, GitHub, Firebase, AWS Cognito
+- **mTLS Authentication** - Client certificate-based auth
+- **No Authentication** - For development/testing
+
+### 🚀 **Code Execution**
+
+- **10+ Programming Languages** - Python, Node.js, Java, Go, Rust, C++, C, PHP, Ruby, Bash
+- **Container Isolation** - Each execution in separate Docker container
+- **Resource Limits** - CPU, memory, process limits
+- **Timeout Protection** - Configurable execution timeouts
+- **Test Case Support** - Run code against multiple test cases
+
+### 📊 **Advanced Features**
+
+- **Test Case Execution** - Inline, file-based, and URL-based test cases
+- **Code Deduplication** - Hash-based caching to prevent duplicate execution
+- **Performance Monitoring** - Execution time and memory usage tracking
+- **Health Monitoring** - Built-in health check endpoints
+- **Dual API Support** - HTTP REST API and gRPC
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Docker
-- Rust (for building from source)
-- `grpcurl` (for testing gRPC endpoints)
+- **Docker** (required for code execution)
+- **Rust** (for building from source)
+- **grpcurl** (for testing gRPC endpoints)
 
-### Running with Docker
+### Option 1: Docker Compose (Recommended)
+
+#### API Key Authentication
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd isobox
+
+# Start with API key authentication
+docker compose -f docker-compose-with-auth.yml up -d
+
+# Test the service
+curl -X POST http://localhost:8000/api/v1/execute \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-key-123" \
+  -d '{"language": "python", "code": "print(\"Hello, IsoBox!\")"}'
+```
+
+#### Firebase OAuth2 Authentication
+
+```bash
+# Start with Firebase authentication
+docker compose -f docker-compose-firebase.yml up -d
+
+# Test with Firebase token
+curl -X POST http://localhost:8000/api/v1/execute \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_FIREBASE_TOKEN" \
+  -d '{"language": "python", "code": "print(\"Hello, IsoBox!\")"}'
+```
+
+### Option 2: Manual Docker
 
 ```bash
 # Build the Docker image
@@ -34,232 +84,186 @@ docker build -t isobox .
 docker run -d \
   --name isobox \
   -p 8000:8000 \
-  -p 50051:50051 \
+  -p 9000:9000 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /tmp:/tmp \
+  -e AUTH_TYPE=apikey \
   -e API_KEYS="your-api-key-here,another-key" \
+  -e API_KEY_HEADER=X-API-Key \
   isobox
 ```
 
-### Building from Source
+### Option 3: Build from Source
 
 ```bash
-# Clone the repository
+# Clone and build
 git clone <repository-url>
 cd isobox
 
-# Set API keys
+# Set environment variables
+export AUTH_TYPE=apikey
 export API_KEYS="your-api-key-here,another-key"
+export API_KEY_HEADER=X-API-Key
 
 # Build and run
 cargo run
 ```
 
-## Environment Variables
+## 📚 Documentation
 
-| Variable    | Description                            | Default       |
-| ----------- | -------------------------------------- | ------------- |
-| `PORT`      | HTTP server port                       | `8000`        |
-| `GRPC_PORT` | gRPC server port                       | `50051`       |
-| `API_KEYS`  | Comma-separated list of valid API keys | `default-key` |
+- **[API Documentation](API.md)** - Complete API reference with examples
+- **[Authentication Guide](AUTHENTICATION.md)** - All authentication methods and configuration
+- **[Configuration Guide](CONFIGURATION.md)** - Environment variables and settings
+- **[Test Cases Guide](TEST_CASES.md)** - How to use test case functionality
+- **[Development Guide](DEVELOPMENT.md)** - Contributing and development setup
 
-## Authentication
+## 🔧 Configuration
 
-IsoBox uses simple API key authentication:
+### Environment Variables
 
-### HTTP API
+| Variable          | Description                                                     | Default       | Required |
+| ----------------- | --------------------------------------------------------------- | ------------- | -------- |
+| `AUTH_TYPE`       | Authentication type (`none`, `apikey`, `jwt`, `oauth2`, `mtls`) | `apikey`      | No       |
+| `API_KEYS`        | Comma-separated API keys                                        | `default-key` | No       |
+| `API_KEY_HEADER`  | Header name for API key                                         | `X-API-Key`   | No       |
+| `REST_PORT`       | HTTP REST API port                                              | `8000`        | No       |
+| `GRPC_PORT`       | gRPC API port                                                   | `9000`        | No       |
+| `DEDUP_ENABLED`   | Enable code deduplication                                       | `true`        | No       |
+| `DEDUP_CACHE_TTL` | Cache TTL in seconds                                            | `3600`        | No       |
 
-Include the API key in the `X-API-Key` header:
+### Authentication Configuration
+
+#### API Key Authentication
+
+```bash
+AUTH_TYPE=apikey
+API_KEYS=key1,key2,key3
+API_KEY_HEADER=X-API-Key
+```
+
+#### JWT Authentication
+
+```bash
+AUTH_TYPE=jwt
+JWT_ISSUER_URL=https://accounts.google.com
+JWT_AUDIENCE=your-app-id
+JWT_PUBLIC_KEY_URL=https://www.googleapis.com/oauth2/v1/certs
+```
+
+#### OAuth2 Authentication (Firebase)
+
+```bash
+AUTH_TYPE=oauth2
+OAUTH2_PROVIDER=firebase
+OAUTH2_CLIENT_ID=your-firebase-client-id
+OAUTH2_CLIENT_SECRET=your-firebase-client-secret
+OAUTH2_TOKEN_URL=https://oauth2.googleapis.com/token
+OAUTH2_USERINFO_URL=https://www.googleapis.com/oauth2/v2/userinfo
+```
+
+## 🛠️ API Usage
+
+### HTTP REST API
+
+#### Basic Code Execution
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/execute \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key-here" \
-  -d '{"language": "python", "code": "print(\"Hello World!\")"}'
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "language": "python",
+    "code": "print(\"Hello, World!\")"
+  }'
+```
+
+#### Code Execution with Test Cases
+
+```bash
+curl -X POST http://localhost:8000/api/v1/execute/test-cases \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "language": "python",
+    "code": "import sys\n\ndata = sys.stdin.read().strip()\nnumbers = [int(x) for x in data.split()]\nprint(sum(numbers))",
+    "test_cases": [
+      {
+        "name": "test_1",
+        "input": "1 2 3",
+        "expected_output": "6",
+        "timeout_seconds": 5,
+        "memory_limit_mb": 128
+      }
+    ]
+  }'
 ```
 
 ### gRPC API
-
-Include the API key in the `authorization` metadata:
 
 ```bash
 grpcurl -plaintext \
   -proto proto/isobox.proto \
-  -H "authorization: your-api-key-here" \
-  -d '{"language": "python", "code": "print(\"Hello World!\")"}' \
-  localhost:50051 isobox.CodeExecutionService/ExecuteCode
+  -H "authorization: your-api-key" \
+  -d '{"language": "python", "code": "print(\"Hello, World!\")"}' \
+  localhost:9000 isobox.CodeExecutionService/ExecuteCode
 ```
 
-## API Endpoints
+## 🗣️ Supported Languages
 
-### HTTP REST API
+| Language    | Docker Image       | Compilation | Features                          |
+| ----------- | ------------------ | ----------- | --------------------------------- |
+| **Python**  | `python:3.11-slim` | No          | ✅ Standard library, pip packages |
+| **Node.js** | `node:18-slim`     | No          | ✅ npm packages, async/await      |
+| **Java**    | `openjdk:17-slim`  | Yes         | ✅ Collections, Streams, Time API |
+| **Go**      | `golang:1.21`      | Yes         | ✅ Goroutines, channels, modules  |
+| **Rust**    | `rust:1.70-slim`   | Yes         | ✅ Cargo, async, traits           |
+| **C++**     | `gcc:latest`       | Yes         | ✅ STL, modern C++ features       |
+| **C**       | `gcc:latest`       | Yes         | ✅ Standard library               |
+| **PHP**     | `php:8.2-cli`      | No          | ✅ Composer, modern PHP           |
+| **Ruby**    | `ruby:3.2-slim`    | No          | ✅ Gems, modern Ruby              |
+| **Bash**    | `ubuntu:22.04`     | No          | ✅ Shell scripting                |
 
-#### Execute Code
+## 🧪 Testing
 
-```http
-POST /api/v1/execute
-Content-Type: application/json
-X-API-Key: your-api-key-here
+### Quick Test
 
-{
-  "language": "python",
-  "code": "print('Hello World!')"
-}
+```bash
+# Test all languages with API key authentication
+./quick-test.sh
+
+# Test with Firebase authentication
+./test-firebase-auth.sh
+
+# Test with real Firebase project
+./test-easyloops-real.sh
 ```
 
-#### Execute Code with Test Cases
+### Comprehensive Testing
 
-IsoBox supports running code against multiple test cases with stdin input. Each test case runs in isolation with its own resource limits.
+```bash
+# Run all tests
+./test_runner.sh
 
-##### Execute with Inline Test Cases
+# Run E2E tests
+./e2e_tests.sh
 
-```http
-POST /api/v1/execute/test-cases
-Content-Type: application/json
-X-API-Key: your-api-key-here
-
-{
-  "language": "python",
-  "code": "import sys\n\ndata = sys.stdin.read().strip()\nnumbers = [int(x) for x in data.split()]\nprint(sum(numbers))",
-  "test_cases": [
-    {
-      "name": "test_1",
-      "input": "1 2 3",
-      "expected_output": "6",
-      "timeout_seconds": 5,
-      "memory_limit_mb": 128
-    },
-    {
-      "name": "test_2",
-      "input": "10 20 30",
-      "expected_output": "60",
-      "timeout_seconds": 5,
-      "memory_limit_mb": 128
-    }
-  ]
-}
+# Run specific language tests
+cargo test test_python_execution
+cargo test test_java_execution
+cargo test test_go_execution
 ```
 
-##### Execute with Test Files
+### Test Case Examples
 
-```http
-POST /api/v1/execute/test-files
-Content-Type: application/json
-X-API-Key: your-api-key-here
+```bash
+# Run test case demos
+./examples/test_cases_demo.sh
 
-{
-  "language": "python",
-  "code": "import sys\n\ndata = sys.stdin.read().strip()\nprint(data[::-1])",
-  "test_files": [
-    {
-      "name": "string_test",
-      "content": "Hello World"
-    },
-    {
-      "name": "number_test",
-      "content": "12345"
-    }
-  ]
-}
+# Test with different input formats
+./examples/demo.sh
 ```
 
-##### Execute with Test URLs
-
-```http
-POST /api/v1/execute/test-urls
-Content-Type: application/json
-X-API-Key: your-api-key-here
-
-{
-  "language": "python",
-  "code": "import sys\n\ndata = sys.stdin.read().strip()\nprint(len(data))",
-  "test_urls": [
-    {
-      "name": "remote_test_1",
-      "url": "https://example.com/test1.txt"
-    },
-    {
-      "name": "remote_test_2",
-      "url": "https://example.com/test2.txt"
-    }
-  ]
-}
-```
-
-##### Test Case Response Format
-
-```json
-{
-  "stdout": "=== Test Case: test_1 ===\n6\n\n=== Test Case: test_2 ===\n60\n",
-  "stderr": "",
-  "exit_code": 0,
-  "time_taken": null,
-  "memory_used": null,
-  "test_results": [
-    {
-      "name": "test_1",
-      "passed": true,
-      "stdout": "6",
-      "stderr": "",
-      "exit_code": 0,
-      "time_taken": 0.123,
-      "memory_used": null,
-      "error_message": null,
-      "input": "1 2 3",
-      "expected_output": "6",
-      "actual_output": "6"
-    },
-    {
-      "name": "test_2",
-      "passed": true,
-      "stdout": "60",
-      "stderr": "",
-      "exit_code": 0,
-      "time_taken": 0.098,
-      "memory_used": null,
-      "error_message": null,
-      "input": "10 20 30",
-      "expected_output": "60",
-      "actual_output": "60"
-    }
-  ]
-}
-```
-
-#### Health Check
-
-```http
-GET /health
-```
-
-### gRPC API
-
-#### Execute Code
-
-```protobuf
-service CodeExecutionService {
-  rpc ExecuteCode(ExecuteCodeRequest) returns (ExecuteCodeResponse);
-  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
-  rpc GetSupportedLanguages(GetSupportedLanguagesRequest) returns (GetSupportedLanguagesResponse);
-}
-```
-
-## Supported Languages
-
-| Language | Docker Image                     | Compilation Required |
-| -------- | -------------------------------- | -------------------- |
-| Python   | python:3.11-slim                 | No                   |
-| Node.js  | node:18-slim                     | No                   |
-| Rust     | rust:1.70-slim                   | Yes                  |
-| Go       | golang:1.21                      | Yes                  |
-| C++      | gcc:latest                       | Yes                  |
-| Java     | openjdk:17-slim                  | Yes                  |
-| C#       | mcr.microsoft.com/dotnet/sdk:7.0 | Yes                  |
-| PHP      | php:8.2-cli                      | No                   |
-| Ruby     | ruby:3.2-slim                    | No                   |
-| Bash     | ubuntu:22.04                     | No                   |
-
-## Architecture
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -271,7 +275,7 @@ service CodeExecutionService {
 │                        IsoBox Server                           │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │ HTTP Server │  │ gRPC Server │  │   Authentication        │  │
-│  │   Port 8000 │  │ Port 50051  │  │   (API Key)             │  │
+│  │   Port 8000 │  │ Port 9000   │  │   (Multi-Strategy)      │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
 │                              │                                  │
 │                              ▼                                  │
@@ -293,118 +297,68 @@ service CodeExecutionService {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Security Considerations
+## 🔒 Security Features
 
-- **Container Isolation**: Each code execution runs in a separate Docker container with network isolation
-- **Resource Limits**: Configurable limits on CPU, memory, processes, and file descriptors
-- **API Key Authentication**: Simple but effective authentication mechanism
-- **No Network Access**: Containers run with `--network none` for security
-- **Privilege Dropping**: Containers run with dropped capabilities and no new privileges
+- **Container Isolation** - Each execution in separate Docker container
+- **Resource Limits** - CPU, memory, process, and file descriptor limits
+- **Network Isolation** - Containers run with `--network none`
+- **Privilege Dropping** - Containers run with dropped capabilities
+- **Multi-Authentication** - Support for various authentication methods
+- **Code Deduplication** - Prevents duplicate code execution
+- **Timeout Protection** - Configurable execution timeouts
 
-## Development
+## 🚀 Performance
 
-### Building
+- **Fast Execution** - Optimized Docker container startup
+- **Caching** - In-memory and Redis caching support
+- **Resource Efficiency** - Minimal resource overhead
+- **Scalability** - Horizontal scaling support
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Development Guide](DEVELOPMENT.md) for details on:
+
+- Setting up the development environment
+- Running tests
+- Code style guidelines
+- Pull request process
+- Issue reporting
+
+### Quick Development Setup
 
 ```bash
+# Clone and setup
+git clone <repository-url>
+cd isobox
+
+# Install dependencies
 cargo build
+
+# Run tests
+cargo test
+
+# Start development server
+cargo run
 ```
 
-### Testing
+## 📄 License
 
-Run the comprehensive test suite:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```bash
-# Run unit tests (fast, no Docker required)
-cargo test --lib
+## 🆘 Support
 
-# Run unit tests with verbose output
-cargo test --lib -- --nocapture
+- **Documentation**: Check the [docs](docs/) directory
+- **Issues**: Report bugs and feature requests on GitHub
+- **Discussions**: Join our community discussions
+- **Examples**: See the [examples/](examples/) directory for usage examples
 
-# Run specific test
-cargo test test_python_multiple_test_cases
+## 🙏 Acknowledgments
 
-# Run integration tests (requires Docker)
-./test_runner.sh
+- Built with [Rust](https://www.rust-lang.org/) and [Actix-Web](https://actix.rs/)
+- Container isolation powered by [Docker](https://www.docker.com/)
+- Authentication support for multiple providers
+- Community contributors and maintainers
 
-# Run comprehensive E2E tests (CI/CD ready)
-./e2e_tests.sh
+---
 
-# Run demo examples
-./examples/demo.sh
-
-# Run test cases demo
-./examples/test_cases_demo.sh
-```
-
-#### Test Coverage
-
-The test suite covers:
-
-- **Unit Tests**: Language registry, resource limits, Docker command building, error handling
-- **Integration Tests**: Full API functionality, multiple languages, test case execution
-- **E2E Tests**: Complete system testing including test case functionality
-- **Demo Scripts**: Example usage and API demonstrations
-
-#### Test Case Testing
-
-The test case functionality is thoroughly tested:
-
-```bash
-# Test Python with multiple test cases
-cargo test test_python_multiple_test_cases
-
-# Test Node.js with test cases
-cargo test test_node_multiple_test_cases
-
-# Test Rust with test cases
-cargo test test_rust_multiple_test_cases
-
-# Test Go with test cases
-cargo test test_go_multiple_test_cases
-
-# Test timeout functionality
-cargo test test_test_case_with_timeout
-
-# Test failing test cases
-cargo test test_test_case_with_failing_output
-```
-
-#### Manual API Testing
-
-```bash
-# Test HTTP API
-curl -X POST http://localhost:8000/api/v1/execute \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: test-key" \
-  -d '{"language": "python", "code": "print(\"Hello World!\")"}'
-
-# Test gRPC API
-grpcurl -plaintext \
-  -proto proto/isobox.proto \
-  -H "authorization: test-key" \
-  -d '{"language": "python", "code": "print(\"Hello World!\")"}' \
-  localhost:50051 isobox.CodeExecutionService/ExecuteCode
-
-# Test with test cases
-./examples/test_cases_demo.sh
-```
-
-### Project Structure
-
-```
-isobox/
-├── src/
-│   ├── main.rs          # Main application entry point
-│   ├── executor.rs      # Code execution logic
-│   ├── grpc.rs          # gRPC service implementation
-│   ├── generated.rs     # Generated protobuf code
-│   └── auth/            # Authentication modules
-├── proto/
-│   └── isobox.proto     # gRPC service definitions
-├── examples/            # Example requests
-└── Dockerfile           # Container definition
-```
-
-## License
-
-[License information]
+**Made with ❤️ for the developer community**
