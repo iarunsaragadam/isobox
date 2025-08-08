@@ -21,8 +21,19 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y protobuf-compiler curl
+          sudo apt-get install -y curl unzip
+          
+          # Install protobuf compiler from official releases
+          PROTOC_VERSION=25.1
+          PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
+          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+          sudo unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc
+          sudo unzip -o ${PROTOC_ZIP} -d /usr/local 'include/*'
+          rm -f ${PROTOC_ZIP}
+          
+          # Verify protoc installation
           protoc --version
+          
           # Install grpcurl for gRPC testing
           curl -sSL https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz | sudo tar -xz -C /usr/local/bin grpcurl
           grpcurl --version
@@ -39,6 +50,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build
+        env:
+          PROTOC: /usr/local/bin/protoc
         run: cargo build --verbose
 
       - name: Verify protobuf compilation
@@ -47,12 +60,18 @@ jobs:
           cargo build --verbose 2>&1 | grep -q "proto/isobox.proto" || echo "Protobuf compilation completed successfully"
 
       - name: Run tests
+        env:
+          PROTOC: /usr/local/bin/protoc
         run: cargo test --verbose
 
       - name: Run clippy
+        env:
+          PROTOC: /usr/local/bin/protoc
         run: cargo clippy -- -D warnings
 
       - name: Check formatting
+        env:
+          PROTOC: /usr/local/bin/protoc
         run: cargo fmt -- --check
 
   build-docker:
