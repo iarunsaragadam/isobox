@@ -1261,27 +1261,31 @@ mod tests {
             return;
         }
 
+        // Check if we're in CI and increase timeouts
+        let is_ci = std::env::var("CI").is_ok();
+        let timeout_multiplier = if is_ci { 3 } else { 1 };
+
         let executor = CodeExecutor::new();
         let test_cases = vec![
             TestCase {
                 name: "addition_test".to_string(),
                 input: "5\n3".to_string(),
                 expected_output: Some("8".to_string()),
-                timeout_seconds: Some(5),
+                timeout_seconds: Some(5 * timeout_multiplier),
                 memory_limit_mb: Some(128),
             },
             TestCase {
                 name: "string_reverse_test".to_string(),
                 input: "Hello World".to_string(),
                 expected_output: Some("dlroW olleH".to_string()),
-                timeout_seconds: Some(5),
+                timeout_seconds: Some(5 * timeout_multiplier),
                 memory_limit_mb: Some(128),
             },
             TestCase {
                 name: "array_sum_test".to_string(),
                 input: "1 2 3 4 5".to_string(),
                 expected_output: Some("15".to_string()),
-                timeout_seconds: Some(5),
+                timeout_seconds: Some(5 * timeout_multiplier),
                 memory_limit_mb: Some(128),
             },
         ];
@@ -1387,20 +1391,34 @@ else:
 
     #[test]
     fn test_node_multiple_test_cases() {
+        // Skip test if Docker is not available
+        if std::process::Command::new("docker")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            println!("Docker not available, skipping test_node_multiple_test_cases");
+            return;
+        }
+
+        // Check if we're in CI and increase timeouts
+        let is_ci = std::env::var("CI").is_ok();
+        let timeout_multiplier = if is_ci { 3 } else { 1 };
+
         let executor = CodeExecutor::new();
         let test_cases = vec![
             TestCase {
                 name: "number_sum_test".to_string(),
                 input: "1 2 3 4 5".to_string(),
                 expected_output: Some("15".to_string()),
-                timeout_seconds: Some(5),
+                timeout_seconds: Some(5 * timeout_multiplier),
                 memory_limit_mb: Some(128),
             },
             TestCase {
                 name: "string_length_test".to_string(),
                 input: "Hello World".to_string(),
                 expected_output: Some("11".to_string()),
-                timeout_seconds: Some(5),
+                timeout_seconds: Some(5 * timeout_multiplier),
                 memory_limit_mb: Some(128),
             },
         ];
@@ -1473,20 +1491,34 @@ rl.on('close', () => {
 
     #[test]
     fn test_rust_multiple_test_cases() {
+        // Skip test if Docker is not available
+        if std::process::Command::new("docker")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            println!("Docker not available, skipping test_rust_multiple_test_cases");
+            return;
+        }
+
+        // Check if we're in CI and increase timeouts
+        let is_ci = std::env::var("CI").is_ok();
+        let timeout_multiplier = if is_ci { 3 } else { 1 };
+
         let executor = CodeExecutor::new();
         let test_cases = vec![
             TestCase {
                 name: "number_sum_test".to_string(),
                 input: "1 2 3 4 5".to_string(),
                 expected_output: Some("15".to_string()),
-                timeout_seconds: Some(10),
+                timeout_seconds: Some(10 * timeout_multiplier),
                 memory_limit_mb: Some(256),
             },
             TestCase {
                 name: "string_reverse_test".to_string(),
                 input: "Hello".to_string(),
                 expected_output: Some("olleH".to_string()),
-                timeout_seconds: Some(10),
+                timeout_seconds: Some(10 * timeout_multiplier),
                 memory_limit_mb: Some(256),
             },
         ];
@@ -1552,20 +1584,34 @@ fn main() {
 
     #[test]
     fn test_go_multiple_test_cases() {
+        // Skip test if Docker is not available
+        if std::process::Command::new("docker")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            println!("Docker not available, skipping test_go_multiple_test_cases");
+            return;
+        }
+
+        // Check if we're in CI and increase timeouts
+        let is_ci = std::env::var("CI").is_ok();
+        let timeout_multiplier = if is_ci { 3 } else { 1 };
+
         let executor = CodeExecutor::new();
         let test_cases = vec![
             TestCase {
                 name: "number_sum_test".to_string(),
                 input: "1 2 3 4 5".to_string(),
                 expected_output: Some("15".to_string()),
-                timeout_seconds: Some(15), // Increased timeout
+                timeout_seconds: Some(15 * timeout_multiplier), // Increased timeout
                 memory_limit_mb: Some(256),
             },
             TestCase {
                 name: "string_uppercase_test".to_string(),
                 input: "hello world".to_string(),
                 expected_output: Some("HELLO WORLD".to_string()),
-                timeout_seconds: Some(15), // Increased timeout
+                timeout_seconds: Some(15 * timeout_multiplier), // Increased timeout
                 memory_limit_mb: Some(256),
             },
         ];
@@ -1797,6 +1843,20 @@ print(data)
 
     #[test]
     fn test_multiple_languages_with_test_cases() {
+        // Skip test if Docker is not available
+        if std::process::Command::new("docker")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            println!("Docker not available, skipping test_multiple_languages_with_test_cases");
+            return;
+        }
+
+        // Check if we're in CI and increase timeouts
+        let is_ci = std::env::var("CI").is_ok();
+        let timeout_multiplier = if is_ci { 3 } else { 1 };
+
         let executor = CodeExecutor::new();
         let languages_and_codes = vec![
             ("python", "import sys\nprint('Python:', sys.stdin.read().strip())"),
@@ -1810,7 +1870,7 @@ print(data)
                 name: "basic_test".to_string(),
                 input: "Hello World".to_string(),
                 expected_output: Some(format!("{}: Hello World", language.capitalize())),
-                timeout_seconds: Some(10),
+                timeout_seconds: Some(10 * timeout_multiplier),
                 memory_limit_mb: Some(256),
             }];
 

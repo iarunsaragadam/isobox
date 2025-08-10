@@ -437,6 +437,19 @@ async fn main() -> std::io::Result<()> {
         Ok(output) if output.status.success() => {
             let version = String::from_utf8_lossy(&output.stdout);
             log::info!("Docker available: {}", version.trim());
+            
+            // Additional Docker health check
+            match std::process::Command::new("docker")
+                .arg("info")
+                .output()
+            {
+                Ok(info_output) if info_output.status.success() => {
+                    log::info!("Docker daemon is running and accessible");
+                }
+                _ => {
+                    log::warn!("Docker daemon may not be fully accessible");
+                }
+            }
         }
         _ => {
             log::error!("Docker is not available or not running!");
