@@ -355,7 +355,7 @@ impl LanguageRegistry {
         let compiled_languages = vec![
             (
                 "rust",
-                "rust:latest",
+                "rust:1.75-slim", // Use slim version for better CI performance
                 "main.rs",
                 vec!["./main".to_string()],
                 Some(vec!["rustc".to_string(), "main.rs".to_string()]),
