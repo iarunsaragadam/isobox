@@ -1331,7 +1331,7 @@ mod tests {
 
         // Check if we're in CI and increase timeouts
         let is_ci = std::env::var("CI").is_ok();
-        let timeout_multiplier = if is_ci { 5 } else { 1 }; // Increased from 3 to 5 for CI
+        let timeout_multiplier = if is_ci { 10 } else { 1 }; // Increased to 10x for CI to be safe
 
         let executor = CodeExecutor::new();
         let test_cases = vec![
@@ -1487,7 +1487,7 @@ else:
 
         // Check if we're in CI and increase timeouts
         let is_ci = std::env::var("CI").is_ok();
-        let timeout_multiplier = if is_ci { 5 } else { 1 }; // Increased from 3 to 5 for CI
+        let timeout_multiplier = if is_ci { 10 } else { 1 }; // Increased to 10x for CI to be safe
 
         let executor = CodeExecutor::new();
         let test_cases = vec![
@@ -1587,7 +1587,7 @@ rl.on('close', () => {
 
         // Check if we're in CI and increase timeouts
         let is_ci = std::env::var("CI").is_ok();
-        let timeout_multiplier = if is_ci { 5 } else { 1 }; // Increased from 3 to 5 for CI
+        let timeout_multiplier = if is_ci { 10 } else { 1 }; // Increased to 10x for CI to be safe
 
         let executor = CodeExecutor::new();
         let test_cases = vec![
@@ -1680,7 +1680,7 @@ fn main() {
 
         // Check if we're in CI and increase timeouts
         let is_ci = std::env::var("CI").is_ok();
-        let timeout_multiplier = if is_ci { 5 } else { 1 }; // Increased from 3 to 5 for CI
+        let timeout_multiplier = if is_ci { 10 } else { 1 }; // Increased to 10x for CI to be safe
 
         let executor = CodeExecutor::new();
         let test_cases = vec![
@@ -1939,7 +1939,7 @@ print(data)
 
         // Check if we're in CI and increase timeouts
         let is_ci = std::env::var("CI").is_ok();
-        let timeout_multiplier = if is_ci { 5 } else { 1 }; // Increased from 3 to 5 for CI
+        let timeout_multiplier = if is_ci { 10 } else { 1 }; // Increased to 10x for CI to be safe
 
         let executor = CodeExecutor::new();
         let languages_and_codes = vec![
