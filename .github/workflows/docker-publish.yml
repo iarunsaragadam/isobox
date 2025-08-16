@@ -150,7 +150,7 @@ jobs:
   # Test the built image
   test:
     name: Test Docker Image
-    needs: build
+    needs: quality-checks
     runs-on: ubuntu-latest
 
     services:
@@ -165,10 +165,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Load cached image
-        run: |
-          # Load the image from the build job
-          docker load --input /tmp/image.tar || true
+      - name: Build test image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          tags: isobox:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
       - name: Run end-to-end tests
         run: |
@@ -177,7 +184,7 @@ jobs:
             -p 8000:8000 \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v /tmp:/tmp \
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            isobox:test
 
           # Wait for container to start
           sleep 10
@@ -192,7 +199,7 @@ jobs:
     # Publish to GHCR (only on trusted refs)
   publish-ghcr:
     name: Publish to GitHub Container Registry
-    needs: [quality-checks, build, test]
+    needs: [quality-checks, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -244,7 +251,7 @@ jobs:
   # Publish to Docker Hub (only on trusted refs, optional)
   publish-dockerhub:
     name: Publish to Docker Hub
-    needs: [quality-checks, build, test]
+    needs: [quality-checks, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
