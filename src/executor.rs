@@ -169,6 +169,11 @@ impl DockerCommandBuilder {
         self
     }
 
+    fn with_user(mut self, user: &str) -> Self {
+        self.args.extend(vec!["--user".to_string(), user.to_string()]);
+        self
+    }
+
     fn build(self) -> Vec<String> {
         self.args
     }
@@ -364,7 +369,7 @@ impl LanguageRegistry {
                 "rust:alpine", // Use alpine version for better CI performance
                 "main.rs",
                 vec!["./main".to_string()],
-                Some(vec!["rustc".to_string(), "main.rs".to_string()]),
+                Some(vec!["rustc".to_string(), "main.rs".to_string(), "-o".to_string(), "main".to_string()]),
             ),
             (
                 "c",
@@ -449,15 +454,9 @@ impl LanguageRegistry {
                 "main.asm",
                 vec!["./main".to_string()],
                 Some(vec![
-                    "nasm".to_string(),
-                    "-f".to_string(),
-                    "elf64".to_string(),
-                    "main.asm".to_string(),
-                    "&&".to_string(),
-                    "ld".to_string(),
-                    "main.o".to_string(),
-                    "-o".to_string(),
-                    "main".to_string(),
+                    "sh".to_string(),
+                    "-lc".to_string(),
+                    "nasm -f elf64 main.asm && ld main.o -o main".to_string(),
                 ]),
             ),
             (
@@ -643,15 +642,16 @@ struct FileManager;
 impl FileManager {
     fn create_temp_directory(job_id: &str) -> Result<String, ExecutionError> {
         // Create temp directory on host system with proper permissions
-        let temp_dir = format!("/tmp/isobox-{}", job_id);
+        let base = std::env::temp_dir();
+        let temp_dir = base.join(format!("isobox-{}", job_id));
 
-        log::info!("Creating temp directory: {}", temp_dir);
+        log::info!("Creating temp directory: {}", temp_dir.display());
 
         fs::create_dir_all(&temp_dir)
             .map_err(|e| ExecutionError::TempDirectoryCreation(e.to_string()))?;
 
-        log::info!("Successfully created temp directory: {}", temp_dir);
-        Ok(temp_dir)
+        log::info!("Successfully created temp directory: {}", temp_dir.display());
+        Ok(temp_dir.to_string_lossy().into_owned())
     }
 
     fn write_code_file(temp_dir: &str, file_name: &str, code: &str) -> Result<(), ExecutionError> {
@@ -809,7 +809,25 @@ impl DockerExecutor {
             .with_volume_mount("/tmp", "/tmp") // Mount host /tmp to container /tmp for writable temp files
             .with_working_directory("/workspace")
             .with_env("TMPDIR", "/tmp") // Set temp directory to writable location
-            .with_env("RUSTFLAGS", "--temp-dir /tmp") // Force Rust to use /tmp for temp files
+            .with_user("0:0") // run as root inside the container
+            .with_resource_limits(limits)
+            .with_image(config.docker_image())
+            .with_command(command)
+            .build()
+    }
+
+    fn build_docker_compile_command(
+        temp_dir: &str,
+        config: &LanguageConfig,
+        limits: &ResourceLimits,
+        command: &[String],
+    ) -> Vec<String> {
+        DockerCommandBuilder::new()
+            .with_volume_mount(temp_dir, "/workspace")
+            .with_volume_mount("/tmp", "/tmp") // Mount host /tmp to container /tmp for writable temp files
+            .with_working_directory("/workspace") // Use /workspace to find source files, but TMPDIR=/tmp for temp files
+            .with_env("TMPDIR", "/tmp") // Set temp directory to writable location
+            .with_user("0:0") // run as root inside the container
             .with_resource_limits(limits)
             .with_image(config.docker_image())
             .with_command(command)
@@ -888,7 +906,7 @@ impl CodeExecutor {
             log::info!("Compiling with: {}", compile_cmd.join(" "));
 
             let docker_compile_args =
-                DockerExecutor::build_docker_command(temp_dir, config, limits, compile_cmd);
+                DockerExecutor::build_docker_compile_command(temp_dir, config, limits, compile_cmd);
 
             let compile_output =
                 DockerExecutor::execute_with_timeout(docker_compile_args, limits.wall_time_limit)
