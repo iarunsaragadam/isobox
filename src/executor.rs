@@ -170,7 +170,8 @@ impl DockerCommandBuilder {
     }
 
     fn with_user(mut self, user: &str) -> Self {
-        self.args.extend(vec!["--user".to_string(), user.to_string()]);
+        self.args
+            .extend(vec!["--user".to_string(), user.to_string()]);
         self
     }
 
@@ -368,8 +369,12 @@ impl LanguageRegistry {
                 "rust",
                 "rust:alpine", // Use alpine version for better CI performance
                 "main.rs",
-                vec!["./main".to_string()],
-                Some(vec!["rustc".to_string(), "main.rs".to_string(), "-o".to_string(), "main".to_string()]),
+                vec!["/tmp/main".to_string()],
+                Some(vec![
+                    "sh".to_string(),
+                    "-lc".to_string(),
+                    "cp /workspace/main.rs /tmp/ && /usr/local/cargo/bin/rustc /tmp/main.rs -o /tmp/main".to_string(),
+                ]),
             ),
             (
                 "c",
@@ -650,7 +655,10 @@ impl FileManager {
         fs::create_dir_all(&temp_dir)
             .map_err(|e| ExecutionError::TempDirectoryCreation(e.to_string()))?;
 
-        log::info!("Successfully created temp directory: {}", temp_dir.display());
+        log::info!(
+            "Successfully created temp directory: {}",
+            temp_dir.display()
+        );
         Ok(temp_dir.to_string_lossy().into_owned())
     }
 
@@ -825,7 +833,7 @@ impl DockerExecutor {
         DockerCommandBuilder::new()
             .with_volume_mount(temp_dir, "/workspace")
             .with_volume_mount("/tmp", "/tmp") // Mount host /tmp to container /tmp for writable temp files
-            .with_working_directory("/workspace") // Use /workspace to find source files, but TMPDIR=/tmp for temp files
+            .with_working_directory("/tmp") // Use /tmp for compilation to avoid permission issues
             .with_env("TMPDIR", "/tmp") // Set temp directory to writable location
             .with_user("0:0") // run as root inside the container
             .with_resource_limits(limits)
