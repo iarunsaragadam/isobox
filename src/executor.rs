@@ -1197,7 +1197,7 @@ mod tests {
             .language_registry
             .get_language_config("rust")
             .unwrap();
-        assert_eq!(rust_config.docker_image(), "rust:latest");
+        assert_eq!(rust_config.docker_image(), "rust:1.75-slim");
         assert_eq!(rust_config.file_name(), "main.rs");
         assert!(rust_config.compile_command().is_some());
     }
