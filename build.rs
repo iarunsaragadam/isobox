@@ -4,4 +4,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         .compile(&["proto/isobox.proto"], &["proto"])?;
     Ok(())
-} 
+}
