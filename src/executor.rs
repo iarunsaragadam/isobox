@@ -1673,8 +1673,14 @@ fn main() {
             }
             return;
         }
-        
+
         let response = result.unwrap();
+
+        println!("Response received:");
+        println!("  stdout: {:?}", response.stdout);
+        println!("  stderr: {:?}", response.stderr);
+        println!("  exit_code: {}", response.exit_code);
+        println!("  test_results: {:?}", response.test_results);
 
         assert!(response.test_results.is_some());
         let test_results = response.test_results.unwrap();
