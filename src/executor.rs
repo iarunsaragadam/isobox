@@ -904,10 +904,16 @@ impl CodeExecutor {
         let mut overall_stderr = String::new();
         let mut overall_exit_code = 0;
 
-        for test_case in test_cases {
+        println!("Starting execution of {} test cases", test_cases.len());
+
+        for (i, test_case) in test_cases.iter().enumerate() {
+            println!("Executing test case {}/{}: {}", i + 1, test_cases.len(), test_case.name);
+            
             let test_result = self
-                .execute_single_test_case(temp_dir, config, limits, &test_case)
+                .execute_single_test_case(temp_dir, config, limits, test_case)
                 .await?;
+
+            println!("Test case {} completed: passed={}", test_case.name, test_result.passed);
 
             // Update overall results
             if !test_result.passed {
@@ -926,6 +932,8 @@ impl CodeExecutor {
 
             test_results.push(test_result);
         }
+
+        println!("All test cases completed. Total results: {}", test_results.len());
 
         Ok(ExecuteResponse {
             stdout: overall_stdout,
