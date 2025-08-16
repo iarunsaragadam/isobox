@@ -648,7 +648,7 @@ impl FileManager {
     fn create_temp_directory(job_id: &str) -> Result<String, ExecutionError> {
         // Create temp directory on host system with proper permissions
         let base = std::env::temp_dir();
-        let temp_dir = base.join(format!("isobox-{}", job_id));
+        let temp_dir = base.join(format!("isobox-{job_id}"));
 
         log::info!("Creating temp directory: {}", temp_dir.display());
 
@@ -663,16 +663,15 @@ impl FileManager {
     }
 
     fn write_code_file(temp_dir: &str, file_name: &str, code: &str) -> Result<(), ExecutionError> {
-        let file_path = format!("{}/{}", temp_dir, file_name);
+        let file_path = format!("{temp_dir}/{file_name}");
 
-        log::info!("Writing code to file: {}", file_path);
+        log::info!("Writing code to file: {file_path}");
         log::info!("Code content length: {} bytes", code.len());
 
         // Verify temp directory exists and is writable
         if !std::path::Path::new(temp_dir).exists() {
             return Err(ExecutionError::TempDirectoryCreation(format!(
-                "Temp directory does not exist: {}",
-                temp_dir
+                "Temp directory does not exist: {temp_dir}",
             )));
         }
 
@@ -682,7 +681,7 @@ impl FileManager {
         // Force sync to ensure the file is written to disk
         if let Ok(file) = std::fs::File::open(&file_path) {
             file.sync_all()
-                .map_err(|e| ExecutionError::FileWrite(format!("Failed to sync file: {}", e)))?;
+                .map_err(|e| ExecutionError::FileWrite(format!("Failed to sync file: {e}")))?;
         }
 
         // Verify the file was actually written
@@ -706,15 +705,14 @@ impl FileManager {
                         }
                     }
                     Err(e) => {
-                        log::error!("Failed to read back file for verification: {}", e);
+                        log::error!("Failed to read back file for verification: {e}");
                     }
                 }
             }
             Err(e) => {
-                log::error!("Failed to verify file creation: {}", e);
+                log::error!("Failed to verify file creation: {e}");
                 return Err(ExecutionError::FileWrite(format!(
-                    "File verification failed: {}",
-                    e
+                    "File verification failed: {e}",
                 )));
             }
         }
@@ -723,11 +721,11 @@ impl FileManager {
     }
 
     fn cleanup_temp_directory(temp_dir: &str) {
-        log::info!("Cleaning up temp directory: {}", temp_dir);
+        log::info!("Cleaning up temp directory: {temp_dir}");
         if let Err(e) = fs::remove_dir_all(temp_dir) {
-            log::warn!("Failed to clean up temp directory {}: {}", temp_dir, e);
+            log::warn!("Failed to clean up temp directory {temp_dir}: {e}");
         } else {
-            log::info!("Successfully cleaned up temp directory: {}", temp_dir);
+            log::info!("Successfully cleaned up temp directory: {temp_dir}");
         }
     }
 }
@@ -964,13 +962,13 @@ impl CodeExecutor {
             }
             overall_stdout.push_str(&format!("=== Test Case: {} ===\n", test_case.name));
             overall_stdout.push_str(&test_result.stdout);
-            overall_stdout.push_str("\n");
+            overall_stdout.push('\n');
 
             if !test_result.stderr.is_empty() {
                 overall_stderr
                     .push_str(&format!("=== Test Case: {} (stderr) ===\n", test_case.name));
                 overall_stderr.push_str(&test_result.stderr);
-                overall_stderr.push_str("\n");
+                overall_stderr.push('\n');
             }
 
             test_results.push(test_result);
@@ -1068,7 +1066,7 @@ impl CodeExecutor {
                     stdout.trim()
                 ))
             } else {
-                Some(format!("Exit code: {}", exit_code))
+                Some(format!("Exit code: {exit_code}"))
             }
         } else {
             None
@@ -1108,11 +1106,10 @@ impl CodeExecutor {
         FileManager::write_code_file(temp_dir, config.file_name(), code)?;
 
         // Verify file exists before running Docker
-        let file_path = format!("{}/{}", temp_dir, config.file_name());
+        let file_path = format!("{temp_dir}/{}", config.file_name());
         if !std::path::Path::new(&file_path).exists() {
             return Err(ExecutionError::FileWrite(format!(
-                "File does not exist after creation: {}",
-                file_path
+                "File does not exist after creation: {file_path}",
             )));
         }
 
@@ -2029,7 +2026,13 @@ print(data)
             let test_cases = vec![TestCase {
                 name: "basic_test".to_string(),
                 input: "Hello World".to_string(),
-                expected_output: Some(format!("{}: Hello World", language.capitalize())),
+                expected_output: Some(format!("{}: Hello World", {
+                    let mut chars = language.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().chain(chars).collect(),
+                    }
+                })),
                 timeout_seconds: Some(10 * timeout_multiplier),
                 memory_limit_mb: Some(256),
             }];
@@ -2066,20 +2069,6 @@ print(data)
                 "Test failed for language {}: {:?}",
                 language, test_result.error_message
             );
-        }
-    }
-}
-
-trait Capitalize {
-    fn capitalize(&self) -> String;
-}
-
-impl Capitalize for str {
-    fn capitalize(&self) -> String {
-        let mut chars = self.chars();
-        match chars.next() {
-            None => String::new(),
-            Some(first) => first.to_uppercase().chain(chars).collect(),
         }
     }
 }

@@ -7,7 +7,7 @@ use crate::grpc::CodeExecutionServiceImpl;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use reqwest;
+
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -154,8 +154,8 @@ async fn authenticate_oauth2(request: &HttpRequest) -> Result<(), HttpResponse> 
 
     // Get OAuth2 configuration from environment
     let provider = std::env::var("OAUTH2_PROVIDER").unwrap_or_else(|_| "firebase".to_string());
-    let client_id = std::env::var("OAUTH2_CLIENT_ID").unwrap_or_default();
-    let client_secret = std::env::var("OAUTH2_CLIENT_SECRET").unwrap_or_default();
+    let _client_id = std::env::var("OAUTH2_CLIENT_ID").unwrap_or_default();
+    let _client_secret = std::env::var("OAUTH2_CLIENT_SECRET").unwrap_or_default();
 
     // For Firebase, we'll do a simple validation
     // In a real implementation, you would use the Firebase Admin SDK
@@ -189,7 +189,7 @@ async fn validate_jwt_token(token: &str, issuer_url: &str, audience: &str) -> Re
     }
 
     // Decode the header to get the key ID
-    let header = decode_header(token).map_err(|e| format!("Failed to decode JWT header: {}", e))?;
+    let header = decode_header(token).map_err(|e| format!("Failed to decode JWT header: {e}"))?;
 
     let kid = header.kid.ok_or("No key ID (kid) found in JWT header")?;
 
@@ -201,17 +201,17 @@ async fn validate_jwt_token(token: &str, issuer_url: &str, audience: &str) -> Re
         .get(public_keys_url)
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch public keys: {}", e))?;
+        .map_err(|e| format!("Failed to fetch public keys: {e}"))?;
 
     let keys_data: HashMap<String, String> = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse public keys: {}", e))?;
+        .map_err(|e| format!("Failed to parse public keys: {e}"))?;
 
     // Get the public key for this key ID
     let public_key = keys_data
         .get(&kid)
-        .ok_or(format!("Public key not found for key ID: {}", kid))?;
+        .ok_or(format!("Public key not found for key ID: {kid}"))?;
 
     // Decode and validate the token
     let mut validation = Validation::new(Algorithm::RS256);
@@ -221,11 +221,11 @@ async fn validate_jwt_token(token: &str, issuer_url: &str, audience: &str) -> Re
     match decode::<Value>(
         token,
         &DecodingKey::from_rsa_pem(public_key.as_bytes())
-            .map_err(|e| format!("Failed to create decoding key: {}", e))?,
+            .map_err(|e| format!("Failed to create decoding key: {e}"))?,
         &validation,
     ) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("JWT validation failed: {}", e)),
+        Err(e) => Err(format!("JWT validation failed: {e}")),
     }
 }
 
@@ -413,8 +413,8 @@ async fn main() -> std::io::Result<()> {
 
     let auth_type = std::env::var("AUTH_TYPE").unwrap_or_else(|_| "apikey".to_string());
 
-    log::info!("Authentication enabled: {}", auth_enabled);
-    log::info!("Authentication type: {}", auth_type);
+    log::info!("Authentication enabled: {auth_enabled}");
+    log::info!("Authentication type: {auth_type}");
 
     if auth_type == "apikey" {
         let api_keys = std::env::var("API_KEYS").unwrap_or_else(|_| "default-key".to_string());
@@ -422,8 +422,8 @@ async fn main() -> std::io::Result<()> {
     } else if auth_type == "jwt" {
         let issuer_url = std::env::var("JWT_ISSUER_URL").unwrap_or_default();
         let audience = std::env::var("JWT_AUDIENCE").unwrap_or_default();
-        log::info!("JWT issuer URL: {}", issuer_url);
-        log::info!("JWT audience: {}", audience);
+        log::info!("JWT issuer URL: {issuer_url}");
+        log::info!("JWT audience: {audience}");
     }
 
     // Create executor without deduplication
@@ -456,11 +456,11 @@ async fn main() -> std::io::Result<()> {
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "8000".to_string());
     let grpc_port = std::env::var("GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
-    let bind_address = format!("0.0.0.0:{}", port);
-    let grpc_address = format!("0.0.0.0:{}", grpc_port);
+    let bind_address = format!("0.0.0.0:{port}");
+    let grpc_address = format!("0.0.0.0:{grpc_port}");
 
-    log::info!("HTTP server starting on {}", bind_address);
-    log::info!("gRPC server starting on {}", grpc_address);
+    log::info!("HTTP server starting on {bind_address}");
+    log::info!("gRPC server starting on {grpc_address}");
 
     // Create gRPC service without authentication for now
     let grpc_service = CodeExecutionServiceImpl::new(executor.clone(), None);
@@ -505,12 +505,12 @@ async fn main() -> std::io::Result<()> {
     tokio::select! {
         result = http_handle => {
             if let Err(e) = result {
-                log::error!("HTTP server error: {}", e);
+                log::error!("HTTP server error: {e}");
             }
         }
         result = grpc_handle => {
             if let Err(e) = result {
-                log::error!("gRPC server error: {}", e);
+                log::error!("gRPC server error: {e}");
             }
         }
     }
