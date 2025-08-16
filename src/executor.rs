@@ -163,6 +163,14 @@ impl DockerCommandBuilder {
         self
     }
 
+    fn with_env(mut self, key: &str, value: &str) -> Self {
+        self.args.extend(vec![
+            "-e".to_string(),
+            format!("{}={}", key, value),
+        ]);
+        self
+    }
+
     fn build(self) -> Vec<String> {
         self.args
     }
@@ -801,6 +809,7 @@ impl DockerExecutor {
         DockerCommandBuilder::new()
             .with_volume_mount(temp_dir, "/workspace")
             .with_working_directory("/workspace")
+            .with_env("TMPDIR", "/tmp")  // Set temp directory to writable location
             .with_resource_limits(limits)
             .with_image(config.docker_image())
             .with_command(command)
