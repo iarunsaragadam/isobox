@@ -164,10 +164,8 @@ impl DockerCommandBuilder {
     }
 
     fn with_env(mut self, key: &str, value: &str) -> Self {
-        self.args.extend(vec![
-            "-e".to_string(),
-            format!("{}={}", key, value),
-        ]);
+        self.args
+            .extend(vec!["-e".to_string(), format!("{}={}", key, value)]);
         self
     }
 
@@ -809,7 +807,8 @@ impl DockerExecutor {
         DockerCommandBuilder::new()
             .with_volume_mount(temp_dir, "/workspace")
             .with_working_directory("/workspace")
-            .with_env("TMPDIR", "/tmp")  // Set temp directory to writable location
+            .with_env("TMPDIR", "/tmp") // Set temp directory to writable location
+            .with_env("RUSTFLAGS", "--temp-dir /tmp") // Force Rust to use /tmp for temp files
             .with_resource_limits(limits)
             .with_image(config.docker_image())
             .with_command(command)
