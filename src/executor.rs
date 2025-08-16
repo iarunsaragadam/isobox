@@ -355,7 +355,7 @@ impl LanguageRegistry {
         let compiled_languages = vec![
             (
                 "rust",
-                "rust:1.75-slim", // Use slim version for better CI performance
+                "rust:alpine", // Use alpine version for better CI performance
                 "main.rs",
                 vec!["./main".to_string()],
                 Some(vec!["rustc".to_string(), "main.rs".to_string()]),
@@ -1197,7 +1197,7 @@ mod tests {
             .language_registry
             .get_language_config("rust")
             .unwrap();
-        assert_eq!(rust_config.docker_image(), "rust:1.75-slim");
+        assert_eq!(rust_config.docker_image(), "rust:alpine");
         assert_eq!(rust_config.file_name(), "main.rs");
         assert!(rust_config.compile_command().is_some());
     }
