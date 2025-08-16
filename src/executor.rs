@@ -806,6 +806,7 @@ impl DockerExecutor {
     ) -> Vec<String> {
         DockerCommandBuilder::new()
             .with_volume_mount(temp_dir, "/workspace")
+            .with_volume_mount("/tmp", "/tmp") // Mount host /tmp to container /tmp for writable temp files
             .with_working_directory("/workspace")
             .with_env("TMPDIR", "/tmp") // Set temp directory to writable location
             .with_env("RUSTFLAGS", "--temp-dir /tmp") // Force Rust to use /tmp for temp files
