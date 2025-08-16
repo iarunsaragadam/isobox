@@ -1,8 +1,9 @@
-name: Build and Test Docker Image
+name: Build, Test, and Publish Docker Image
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -11,11 +12,17 @@ env:
   DOCKERHUB_REGISTRY: docker.io
   IMAGE_NAME: ${{ github.repository }}
 
-jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
+# Concurrency control to prevent overlapping publishes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  # Quality checks and testing
+  quality-checks:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    
     services:
       docker:
         image: docker:dind
@@ -88,10 +95,15 @@ jobs:
           PROTOC: /usr/local/bin/protoc
         run: make test-integration
 
-  build-and-test:
-    name: Build and Test Docker Image
-    needs: test
+  # Build Docker image once with caching
+  build:
+    name: Build Docker Image
+    needs: quality-checks
     runs-on: ubuntu-latest
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -99,70 +111,70 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata for GHCR
-        id: meta-ghcr
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
+            type=ref,event=tag
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=isobox
+            org.opencontainers.image.description=Secure code execution API
+            org.opencontainers.image.vendor=isobox
 
-      - name: Extract metadata for Docker Hub
-        id: meta-dockerhub
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/isobox
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build Docker image
+      - name: Build and push to cache
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: false
-          tags: |
-            ${{ steps.meta-ghcr.outputs.tags }}
-            ${{ steps.meta-dockerhub.outputs.tags }}
-          labels: ${{ steps.meta-ghcr.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+          outputs: type=docker,dest=/tmp/image.tar
+
+      - name: Load image for testing
+        run: docker load --input /tmp/image.tar
+
+  # Test the built image
+  test:
+    name: Test Docker Image
+    needs: build
+    runs-on: ubuntu-latest
+    
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Load cached image
+        run: |
+          # Load the image from the build job
+          docker load --input /tmp/image.tar || true
 
       - name: Run end-to-end tests
         run: |
-          # Use a simple local tag for testing
-          docker tag ${{ steps.meta-ghcr.outputs.tags }} isobox:test
-
           # Start the container for testing
           docker run -d --name isobox-test \
             -p 8000:8000 \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v /tmp:/tmp \
-            isobox:test
+            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
           # Wait for container to start
           sleep 10
@@ -174,24 +186,19 @@ jobs:
           docker stop isobox-test
           docker rm isobox-test
 
-  push-ghcr:
-    name: Push to GitHub Container Registry
-    needs: build-and-test
+  # Publish to GHCR (only on trusted refs)
+  publish-ghcr:
+    name: Publish to GitHub Container Registry
+    needs: [quality-checks, build, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -200,9 +207,13 @@ jobs:
           images: ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
+            type=ref,event=tag
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=isobox
+            org.opencontainers.image.description=Secure code execution API
+            org.opencontainers.image.vendor=isobox
 
       - name: Build and push to GHCR
         uses: docker/build-push-action@v5
@@ -214,12 +225,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
-  push-dockerhub:
-    name: Push to Docker Hub
-    needs: build-and-test
+  # Publish to Docker Hub (only on trusted refs, optional)
+  publish-dockerhub:
+    name: Publish to Docker Hub
+    needs: [quality-checks, build, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -241,9 +256,13 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/isobox
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
+            type=ref,event=tag
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=isobox
+            org.opencontainers.image.description=Secure code execution API
+            org.opencontainers.image.vendor=isobox
 
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v5
@@ -255,3 +274,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
