@@ -42,10 +42,6 @@ impl AuthService {
         // Perform authentication
         let result = self.strategy.authenticate(request).await?;
 
-        // Cache the result - we need to recreate the request for caching
-        // This is a limitation of the current design
-        // In a real implementation, you might want to cache based on headers only
-
         Ok(result)
     }
 }

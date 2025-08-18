@@ -149,7 +149,6 @@ impl AuthStrategy for JwtAuthStrategy {
             .or(claims.email.clone())
             .ok_or_else(|| AuthError::Authentication("No user ID in token".to_string()))?;
 
-        // Build permissions (you might want to extract these from claims or a separate service)
         let permissions = vec!["execute".to_string()];
 
         // Build metadata

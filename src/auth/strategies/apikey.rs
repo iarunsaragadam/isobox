@@ -48,8 +48,6 @@ impl AuthStrategy for ApiKeyAuthStrategy {
         // Validate the API key
         self.validate_api_key(&api_key)?;
 
-        // For API key auth, we use the key itself as a user identifier
-        // In a real system, you might want to map API keys to specific users
         let user_id = format!("apikey:{}", api_key);
 
         // API keys typically have full permissions
