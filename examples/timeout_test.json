@@ -1,0 +1,4 @@
+{
+  "language": "python",
+  "code": "import time\nprint('Starting infinite loop...')\nwhile True:\n    print('Loop iteration')\n    time.sleep(1)"
+} 

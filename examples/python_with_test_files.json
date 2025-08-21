@@ -1,0 +1,18 @@
+{
+  "language": "python",
+  "code": "import sys\n\n# Read input from stdin\ndata = sys.stdin.read().strip()\n\n# Simple example: if input is numbers, add them\nif data.replace(' ', '').replace('\\n', '').isdigit():\n    numbers = [int(x) for x in data.split()]\n    result = sum(numbers)\n    print(result)\nelse:\n    # If it's text, reverse it\n    print(data[::-1])",
+  "test_files": [
+    {
+      "name": "simple_math_test",
+      "content": "5\n3"
+    },
+    {
+      "name": "string_reverse_test", 
+      "content": "Hello World"
+    },
+    {
+      "name": "array_sum_test",
+      "content": "1 2 3 4 5"
+    }
+  ]
+} 

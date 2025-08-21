@@ -1,0 +1,13 @@
+[package]
+name = "isobox-grpc-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tonic = "0.10"
+tokio = { version = "1.0", features = ["full"] }
+isobox = { path = ".." }
+
+[[bin]]
+name = "grpc_client"
+path = "grpc_client.rs" 

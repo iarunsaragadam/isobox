@@ -1,0 +1,4 @@
+{
+  "language": "python",
+  "code": "print('Attempting to allocate 200MB of memory...')\ndata = [0] * (1024 * 1024 * 200)  # 200MB\nprint('Memory allocation successful!')\nprint(f'Allocated {len(data)} integers')"
+} 
